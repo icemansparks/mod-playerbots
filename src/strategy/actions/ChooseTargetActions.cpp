@@ -57,6 +57,24 @@ bool AttackAnythingAction::isUseful()
         return false;
     }
 
+    bool assistingFriendly = false;
+
+    if (Unit* victim = target->GetVictim())
+        assistingFriendly = bot->IsFriendlyTo(victim);
+
+    // Skip level guard when we are helping an ally that is already under attack
+    if (!assistingFriendly)
+    {
+        // Prevent Bots from attacking high level players (way higher level compared to their own level)
+        // Since real players would also not start attacking a player way higher level than them
+        if (target->GetLevel() > bot->getLevel() + 10)
+            return false;
+
+        // Prevent Bots from attacking low level players (way lower level compared to their own level)
+        if (target->GetLevel() < bot->getLevel() - 10)
+            return false;
+    }
+
     return true;
 }
 
