@@ -13,6 +13,105 @@
 #include "PossibleRpgTargetsValue.h"
 #include "PvpTriggers.h"
 #include "ServerFacade.h"
+#include "Group.h"
+#include "ObjectAccessor.h"
+#include "ThreatMgr.h"
+
+static constexpr float kAssistRange = 30.0f;
+
+// Determines whether engaging the target is acceptable despite level differences.
+static bool IsAcceptableWorldPvpTarget(Player* bot, PlayerbotAI* botAI, Unit* target)
+{
+    if (!bot || !botAI || !target)
+        return false;
+
+    if (!target->IsPlayer())
+        return true;  // PvE targets keep original behavior; only player-vs-player gets gated.
+
+    // Target is already fighting a friendly unit (pet, player, etc.).
+    if (Unit* victim = target->GetVictim())
+    {
+        if (bot->IsFriendlyTo(victim))
+            return true;
+    }
+
+    // Any current friendly attackers on the target also justify joining the fight.
+    for (Unit* attacker : target->getAttackers())
+    {
+        if (!attacker || !attacker->IsAlive())
+            continue;
+
+        if (bot->IsFriendlyTo(attacker))
+            return true;
+    }
+
+    // Count nearby players around the target to determine friendly advantage.
+    uint32 friendlyNearby = bot->IsWithinDistInMap(target, kAssistRange) ? 1 : 0;
+    uint32 enemyNearby = 0;
+
+    GuidVector const& friendlyGuids = botAI->GetAiObjectContext()->GetValue<GuidVector>("nearest friendly players")->Get();
+    for (ObjectGuid const& guid : friendlyGuids)
+    {
+        Unit* unit = ObjectAccessor::GetUnit(*bot, guid);
+        if (!unit || !unit->IsAlive() || unit == bot)
+            continue;
+
+        if (!unit->IsWithinDistInMap(target, kAssistRange))
+            continue;
+
+        if (bot->IsFriendlyTo(unit))
+        {
+            ++friendlyNearby;
+
+            // Friendlies actively tanking the target mean it is already an ongoing fight.
+            if (unit->GetVictim() == target)
+                return true;
+        }
+    }
+
+    GuidVector const& enemyGuids = botAI->GetAiObjectContext()->GetValue<GuidVector>("nearest enemy players")->Get();
+    for (ObjectGuid const& guid : enemyGuids)
+    {
+        Unit* unit = ObjectAccessor::GetUnit(*bot, guid);
+        if (!unit || !unit->IsAlive() || unit == target)
+            continue;
+
+        if (!unit->IsWithinDistInMap(target, kAssistRange))
+            continue;
+
+        ++enemyNearby;
+    }
+
+    if (friendlyNearby > enemyNearby)
+        return true;
+
+    // Retaliate if the target has already generated threat on the bot or its party.
+    ThreatMgr& threatMgr = target->GetThreatMgr();
+    if (threatMgr.GetThreat(bot) > 0.0f)
+        return true;
+
+    if (Group* group = bot->GetGroup())
+    {
+        for (GroupReference* memberRef = group->GetFirstMember(); memberRef; memberRef = memberRef->next())
+        {
+            Player* member = memberRef->GetSource();
+            if (!member || member == bot || !member->IsAlive())
+                continue;
+
+            if (threatMgr.GetThreat(member) > 0.0f)
+                return true;
+        }
+    }
+
+    // Enforce basic sanity checks so bots mirror typical player expectations in lopsided level fights.
+    if (target->GetLevel() > bot->getLevel() + 10)
+        return false;
+
+    if (target->GetLevel() < bot->getLevel() - 10)
+        return false;
+
+    return true;
+}
 
 bool AttackEnemyPlayerAction::isUseful()
 {
@@ -57,23 +156,8 @@ bool AttackAnythingAction::isUseful()
         return false;
     }
 
-    bool assistingFriendly = false;
-
-    if (Unit* victim = target->GetVictim())
-        assistingFriendly = bot->IsFriendlyTo(victim);
-
-    // Skip level guard when we are helping an ally that is already under attack
-    if (!assistingFriendly)
-    {
-        // Prevent Bots from attacking high level players (way higher level compared to their own level)
-        // Since real players would also not start attacking a player way higher level than them
-        if (target->GetLevel() > bot->getLevel() + 10)
-            return false;
-
-        // Prevent Bots from attacking low level players (way lower level compared to their own level)
-        if (target->GetLevel() < bot->getLevel() - 10)
-            return false;
-    }
+    if (!IsAcceptableWorldPvpTarget(bot, botAI, target))
+        return false;
 
     return true;
 }
