@@ -116,6 +116,11 @@ public:
     PlayerbotAI* GetPlayerbotAI(Player* player);
     PlayerbotMgr* GetPlayerbotMgr(Player* player);
 
+    // Detach a character from any existing bot/master relationships.
+    // - Removes the character GUID from any master's PlayerbotMgr playerBots map
+    // - If an AI exists and its master is someone else, clears the master and resets strategies
+    void DetachCharacterFromAllMasters(Player* player);
+
 private:
     std::unordered_map<ObjectGuid, PlayerbotAIBase*> _playerbotsAIMap;
     std::unordered_map<ObjectGuid, PlayerbotAIBase*> _playerbotsMgrMap;

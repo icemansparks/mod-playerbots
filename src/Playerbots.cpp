@@ -94,7 +94,12 @@ public:
     {
         if (!player->GetSession()->IsBot())
         {
+            // Attach PlayerbotMgr for this real player first
             sPlayerbotsMgr->AddPlayerbotData(player, false);
+
+            // Ensure this character is detached from any prior bot/master relationships
+            // (e.g., if it was previously running as an alt-bot controlled by another account)
+            sPlayerbotsMgr->DetachCharacterFromAllMasters(player);
             sRandomPlayerbotMgr->OnPlayerLogin(player);
 
             // Before modifying the following messages, please make sure it does not violate the AGPLv3.0 license

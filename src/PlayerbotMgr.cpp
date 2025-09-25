@@ -1759,6 +1759,58 @@ PlayerbotMgr* PlayerbotsMgr::GetPlayerbotMgr(Player* player)
     return nullptr;
 }
 
+void PlayerbotsMgr::DetachCharacterFromAllMasters(Player* player)
+{
+    if (!player)
+        return;
+
+    ObjectGuid guid = player->GetGUID();
+
+    // Clear any AI master relationship if it still points to someone else
+    if (PlayerbotAI* ai = GetPlayerbotAI(player))
+    {
+        Player* currentMaster = ai->GetMaster();
+        if (currentMaster && currentMaster != player)
+        {
+            ai->SetMaster(nullptr);
+            if (!player->InBattleground())
+                ai->ResetStrategies();
+        }
+    }
+
+    // Remove this character from any master's controlled bot list
+    for (auto& entry : _playerbotsMgrMap)
+    {
+        PlayerbotAIBase* base = entry.second;
+        if (!base || base->IsBotAI())
+            continue;
+
+        PlayerbotMgr* mgr = reinterpret_cast<PlayerbotMgr*>(base);
+        if (!mgr)
+            continue;
+
+        // If any manager still tracks this character as a bot, ensure it is not a live bot session
+        if (Player* tracked = mgr->GetPlayerBot(guid))
+        {
+            // If this tracked player is a real player session now, just drop the mapping; do not log them out
+            if (!tracked->GetSession() || !tracked->GetSession()->IsBot() || tracked == player)
+            {
+                mgr->RemoveFromPlayerbotsMap(guid);
+            }
+            else
+            {
+                // Otherwise, it is (or was) a bot session: log it out to free the character
+                mgr->LogoutPlayerBot(guid);
+            }
+        }
+        else
+        {
+            // Make sure stale entries are removed
+            mgr->RemoveFromPlayerbotsMap(guid);
+        }
+    }
+}
+
 void PlayerbotMgr::HandleSetSecurityKeyCommand(Player* player, const std::string& key)
 {
     uint32 accountId = player->GetSession()->GetAccountId();
