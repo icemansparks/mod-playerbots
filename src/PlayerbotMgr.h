@@ -31,8 +31,7 @@ public:
     bool IsAccountLinked(uint32 accountId, uint32 masterAccountId);
     void HandlePlayerBotLoginCallback(PlayerbotLoginQueryHolder const& holder);
 
-    void LogoutPlayerBot(ObjectGuid guid);
-    void ForceLogoutPlayerBot(ObjectGuid guid);
+    void LogoutPlayerBot(ObjectGuid guid, bool forceInstant = false);
     void DisablePlayerBot(ObjectGuid guid);
     void RemoveFromPlayerbotsMap(ObjectGuid guid);
     Player* GetPlayerBot(ObjectGuid guid) const;

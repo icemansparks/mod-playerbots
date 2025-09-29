@@ -302,7 +302,7 @@ void PlayerbotMgr::CancelLogout()
     }
 }
 
-void PlayerbotHolder::LogoutPlayerBot(ObjectGuid guid)
+void PlayerbotHolder::LogoutPlayerBot(ObjectGuid guid, bool forceInstant)
 {
     if (Player* bot = GetPlayerBot(guid))
     {
@@ -358,9 +358,9 @@ void PlayerbotHolder::LogoutPlayerBot(ObjectGuid guid)
             target = botAI->GetAiObjectContext()->GetValue<TravelTarget*>("travel target")->Get();
         }
 
-        // Do not force instant logout unconditionally.
-        // Respect core's ShouldLogOut logic to avoid re-entrancy issues
-        // around session logout that can race with core logout handling.
+        // Allow callers to force an immediate logout when required
+        if (forceInstant)
+            logout = true;
 
         // if no instant logout, request normal logout
         if (!logout)
@@ -396,38 +396,6 @@ void PlayerbotHolder::LogoutPlayerBot(ObjectGuid guid)
             RemoveFromPlayerbotsMap(guid);                  // deletes bot player ptr inside this WorldSession PlayerBotMap
             botWorldSessionPtr->LogoutPlayer(true);  // this will delete the bot Player object and PlayerbotAI object
             delete botWorldSessionPtr;               // finally delete the bot's WorldSession
-        }
-    }
-}
-
-void PlayerbotHolder::ForceLogoutPlayerBot(ObjectGuid guid)
-{
-    if (Player* bot = GetPlayerBot(guid))
-    {
-        PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot);
-        if (!botAI)
-            return;
-
-        Group* group = bot->GetGroup();
-        if (group && !bot->InBattleground() && !bot->InBattlegroundQueue() && botAI->HasActivePlayerMaster())
-        {
-            sPlayerbotDbStore->Save(botAI);
-        }
-
-        LOG_DEBUG("playerbots", "[Force] Bot {} logging out", bot->GetName().c_str());
-        bot->SaveToDB(false, false);
-
-        WorldSession* botWorldSessionPtr = bot->GetSession();
-
-        // Tell master and remove from our maps first
-        botAI->TellMaster("Goodbye!");
-        RemoveFromPlayerbotsMap(guid);
-
-        // Force immediate logout, letting the core run full player logout pipeline
-        if (botWorldSessionPtr)
-        {
-            botWorldSessionPtr->LogoutPlayer(true);
-            delete botWorldSessionPtr;
         }
     }
 }
@@ -1841,7 +1809,7 @@ void PlayerbotsMgr::DetachCharacterFromAllMasters(Player* player)
         if (mgr->GetPlayerBot(guid))
         {
             // Force immediate logout to remove the stale bot body before the real player is fully in.
-            mgr->ForceLogoutPlayerBot(guid);
+            mgr->LogoutPlayerBot(guid, true);
         }
     }
 
