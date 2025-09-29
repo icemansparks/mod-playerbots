@@ -1809,13 +1809,24 @@ void PlayerbotsMgr::DetachCharacterFromAllMasters(Player* player)
         // If any manager still tracks this character as a bot, ensure it is not a live bot session
         if (Player* tracked = mgr->GetPlayerBot(guid))
         {
+            // Drop from the master's controlled-bots map first to avoid iterator use-after-free in the same tick
+            mgr->RemoveFromPlayerbotsMap(guid);
+
             WorldSession* trackedSess = tracked->GetSession();
 
-            // If tracked player is (or was) a bot session, kick it so CharacterHandler can adopt
-            // the in-world player without triggering core logout side effects (SocialMgr removal).
+            // If tracked player is (or was) a bot session, fully tear it down safely
             if (trackedSess && trackedSess->IsBot())
             {
-                // First, safely unlink the tracked Player from the world without touching socials.
+                // Inform RandomPlayerbotMgr so it removes this player from its tracking vectors
+                sRandomPlayerbotMgr->OnPlayerLogout(tracked);
+
+                // Delete bot AI mapping before deleting Player to prevent stale AI dereferences
+                if (PlayerbotAI* ai = GET_PLAYERBOT_AI(tracked))
+                {
+                    delete ai; // removes from sPlayerbotsMgr->_playerbotsAIMap
+                }
+
+                // Safely unlink the tracked Player from the world without touching socials
                 if (tracked->IsInWorld())
                 {
                     tracked->CleanupsBeforeDelete();
@@ -1835,9 +1846,6 @@ void PlayerbotsMgr::DetachCharacterFromAllMasters(Player* player)
                 // Finally, delete the tracked Player object to avoid leaks and duplicates.
                 delete tracked;
             }
-
-            // In all cases, drop this bot from the master's map to avoid stale control
-            mgr->RemoveFromPlayerbotsMap(guid);
         }
         else
         {
