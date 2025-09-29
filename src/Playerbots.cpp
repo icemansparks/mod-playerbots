@@ -94,7 +94,14 @@ public:
     {
         if (!player->GetSession()->IsBot())
         {
-            // Attach PlayerbotMgr for this real player first
+            // If this character was previously running as a bot, drop any leftover AI to avoid
+            // responding to bot chat commands (e.g. "nc ?") and to prevent dual ownership.
+            if (PlayerbotAI* staleAI = GET_PLAYERBOT_AI(player))
+            {
+                delete staleAI; // destructor unregisters from sPlayerbotsMgr
+            }
+
+            // Attach PlayerbotMgr for this real player
             sPlayerbotsMgr->AddPlayerbotData(player, false);
 
             // Ensure this character is detached from any prior bot/master relationships

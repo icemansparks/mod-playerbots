@@ -1793,16 +1793,17 @@ void PlayerbotsMgr::DetachCharacterFromAllMasters(Player* player)
         // If any manager still tracks this character as a bot, ensure it is not a live bot session
         if (Player* tracked = mgr->GetPlayerBot(guid))
         {
-            // If this tracked player is a real player session now, just drop the mapping; do not log them out
-            if (!tracked->GetSession() || !tracked->GetSession()->IsBot() || tracked == player)
+            WorldSession* trackedSess = tracked->GetSession();
+
+            // If tracked player is (or was) a bot session, kick it so CharacterHandler can adopt
+            // the in-world player without triggering core logout side effects (SocialMgr removal).
+            if (trackedSess && trackedSess->IsBot())
             {
-                mgr->RemoveFromPlayerbotsMap(guid);
+                trackedSess->KickPlayer(true);
             }
-            else
-            {
-                // Otherwise, it is (or was) a bot session: log it out to free the character
-                mgr->LogoutPlayerBot(guid);
-            }
+
+            // In all cases, drop this bot from the master's map to avoid stale control
+            mgr->RemoveFromPlayerbotsMap(guid);
         }
         else
         {
