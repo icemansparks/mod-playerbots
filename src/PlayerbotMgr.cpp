@@ -358,8 +358,9 @@ void PlayerbotHolder::LogoutPlayerBot(ObjectGuid guid)
             target = botAI->GetAiObjectContext()->GetValue<TravelTarget*>("travel target")->Get();
         }
 
-        // Peiru: Allow bots to always instant logout to see if this resolves logout crashes
-        logout = true;
+        // Do not force instant logout unconditionally.
+        // Respect core's ShouldLogOut logic to avoid re-entrancy issues
+        // around session logout that can race with core logout handling.
 
         // if no instant logout, request normal logout
         if (!logout)
@@ -389,7 +390,7 @@ void PlayerbotHolder::LogoutPlayerBot(ObjectGuid guid)
             }
             return;
         }  // if instant logout possible, do it
-        else if (bot && (logout || !botWorldSessionPtr->isLogingOut()))
+        else if (bot && logout && !botWorldSessionPtr->isLogingOut())
         {
             botAI->TellMaster("Goodbye!");
             RemoveFromPlayerbotsMap(guid);                  // deletes bot player ptr inside this WorldSession PlayerBotMap
