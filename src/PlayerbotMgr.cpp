@@ -1795,7 +1795,7 @@ void PlayerbotsMgr::DetachCharacterFromAllMasters(Player* player)
         }
     }
 
-    // Remove this character from any master's controlled bot list (mapping only; let core manage sessions/players)
+    // Remove this character from any master's controlled bot list
     for (auto& entry : _playerbotsMgrMap)
     {
         PlayerbotAIBase* base = entry.second;
@@ -1806,22 +1806,11 @@ void PlayerbotsMgr::DetachCharacterFromAllMasters(Player* player)
         if (!mgr)
             continue;
 
-        if (Player* tracked = mgr->GetPlayerBot(guid))
+        if (mgr->GetPlayerBot(guid))
         {
-            // Drop mapping so master stops controlling this character
-            mgr->RemoveFromPlayerbotsMap(guid);
-
-            // If the tracked bot is currently in world, quietly remove it from the map
-            // without tearing down its session or deleting the Player object.
-            if (tracked->IsInWorld())
-            {
-                tracked->CleanupsBeforeDelete();
-                if (Map* map = tracked->FindMap())
-                {
-                    map->RemovePlayerFromMap(tracked, true);
-                    map->AfterPlayerUnlinkFromMap();
-                }
-            }
+            // Now safe to use the normal core logout path (SocialMgr guarded in core).
+            // This cleanly removes the bot from map, sessions, and RandomPlayerbotMgr lists.
+            mgr->LogoutPlayerBot(guid);
         }
     }
 }

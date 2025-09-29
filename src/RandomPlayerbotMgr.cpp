@@ -996,6 +996,8 @@ void RandomPlayerbotMgr::CheckBgQueue()
     // Opens a queue for bots to join
     for (Player* player : players)
     {
+        if (!player || !player->IsInWorld())
+            continue;
         // Skip player if not currently in a queue
         if (!player->InBattlegroundQueue())
             continue;
@@ -1014,7 +1016,10 @@ void RandomPlayerbotMgr::CheckBgQueue()
 
             // Check if real player is able to create/join this queue
             BattlegroundTypeId bgTypeId = sBattlegroundMgr->BGTemplateId(queueTypeId);
-            uint32 mapId = sBattlegroundMgr->GetBattlegroundTemplate(bgTypeId)->GetMapId();
+            Battleground* tmpl = sBattlegroundMgr->GetBattlegroundTemplate(bgTypeId);
+            if (!tmpl)
+                continue;
+            uint32 mapId = tmpl->GetMapId();
             PvPDifficultyEntry const* pvpDiff = GetBattlegroundBracketByLevel(mapId, player->GetLevel());
             if (!pvpDiff)
                 continue;
@@ -1104,7 +1109,10 @@ void RandomPlayerbotMgr::CheckBgQueue()
                 continue;
 
             BattlegroundTypeId bgTypeId = sBattlegroundMgr->BGTemplateId(queueTypeId);
-            uint32 mapId = sBattlegroundMgr->GetBattlegroundTemplate(bgTypeId)->GetMapId();
+            Battleground* tmpl = sBattlegroundMgr->GetBattlegroundTemplate(bgTypeId);
+            if (!tmpl)
+                continue;
+            uint32 mapId = tmpl->GetMapId();
             PvPDifficultyEntry const* pvpDiff = GetBattlegroundBracketByLevel(mapId, bot->GetLevel());
             if (!pvpDiff)
                 continue;
