@@ -1811,13 +1811,15 @@ void PlayerbotsMgr::DetachCharacterFromAllMasters(Player* player)
             // Drop mapping so master stops controlling this character
             mgr->RemoveFromPlayerbotsMap(guid);
 
-            // If the tracked character currently runs under a bot session,
-            // move that session to offline so CharacterHandler can adopt the in-world Player.
-            if (WorldSession* trackedSess = tracked->GetSession())
+            // If the tracked bot is currently in world, quietly remove it from the map
+            // without tearing down its session or deleting the Player object.
+            if (tracked->IsInWorld())
             {
-                if (trackedSess->IsBot())
+                tracked->CleanupsBeforeDelete();
+                if (Map* map = tracked->FindMap())
                 {
-                    trackedSess->KickPlayer("Bot takeover by real player", false);
+                    map->RemovePlayerFromMap(tracked, true);
+                    map->AfterPlayerUnlinkFromMap();
                 }
             }
         }
