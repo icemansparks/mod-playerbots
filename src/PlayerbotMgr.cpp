@@ -1683,6 +1683,14 @@ void PlayerbotsMgr::AddPlayerbotData(Player* player, bool isBotAI)
 
     if (!isBotAI)
     {
+        // Ensure we don't leave a stale AI mapping when attaching a PlayerbotMgr
+        {
+            auto aiItr = _playerbotsAIMap.find(player->GetGUID());
+            if (aiItr != _playerbotsAIMap.end())
+            {
+                _playerbotsAIMap.erase(aiItr);
+            }
+        }
         std::unordered_map<ObjectGuid, PlayerbotAIBase*>::iterator itr = _playerbotsMgrMap.find(player->GetGUID());
         if (itr != _playerbotsMgrMap.end())
         {
@@ -1695,6 +1703,14 @@ void PlayerbotsMgr::AddPlayerbotData(Player* player, bool isBotAI)
     }
     else
     {
+        // Ensure we don't leave a stale PlayerbotMgr mapping when attaching bot AI
+        {
+            auto mgrItr = _playerbotsMgrMap.find(player->GetGUID());
+            if (mgrItr != _playerbotsMgrMap.end())
+            {
+                _playerbotsMgrMap.erase(mgrItr);
+            }
+        }
         std::unordered_map<ObjectGuid, PlayerbotAIBase*>::iterator itr = _playerbotsAIMap.find(player->GetGUID());
         if (itr != _playerbotsAIMap.end())
         {
@@ -1799,7 +1815,10 @@ void PlayerbotsMgr::DetachCharacterFromAllMasters(Player* player)
             // the in-world player without triggering core logout side effects (SocialMgr removal).
             if (trackedSess && trackedSess->IsBot())
             {
-                trackedSess->KickPlayer(true);
+                // Move the bot session to the offline session pool so the real login can adopt
+                // the in-world Player object (CharacterHandler.cpp uses offline sessions for adoption).
+                // Pass setKicked = false so HandleSocketClosed() migrates it to _offlineSessions.
+                trackedSess->KickPlayer("Bot takeover by real player", false);
             }
 
             // In all cases, drop this bot from the master's map to avoid stale control

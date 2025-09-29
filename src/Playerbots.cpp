@@ -135,6 +135,27 @@ public:
 
     void OnPlayerAfterUpdate(Player* player, uint32 diff) override
     {
+        if (!player)
+            return;
+
+        WorldSession* sess = player->GetSession();
+
+        // If this character is controlled by a real player but still has leftover bot AI,
+        // drop the AI and attach a PlayerbotMgr mapping so chat hooks/commands behave correctly.
+        if (sess && !sess->IsBot())
+        {
+            if (PlayerbotAI* staleAI = GET_PLAYERBOT_AI(player))
+            {
+                delete staleAI; // unregisters from sPlayerbotsMgr
+                sPlayerbotsMgr->DetachCharacterFromAllMasters(player);
+            }
+
+            if (!GET_PLAYERBOT_MGR(player))
+            {
+                sPlayerbotsMgr->AddPlayerbotData(player, false);
+            }
+        }
+
         if (PlayerbotAI* botAI = GET_PLAYERBOT_AI(player))
         {
             botAI->UpdateAI(diff);
