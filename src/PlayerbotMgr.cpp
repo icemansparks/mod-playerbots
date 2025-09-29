@@ -1815,10 +1815,25 @@ void PlayerbotsMgr::DetachCharacterFromAllMasters(Player* player)
             // the in-world player without triggering core logout side effects (SocialMgr removal).
             if (trackedSess && trackedSess->IsBot())
             {
-                // Move the bot session to the offline session pool so the real login can adopt
-                // the in-world Player object (CharacterHandler.cpp uses offline sessions for adoption).
-                // Pass setKicked = false so HandleSocketClosed() migrates it to _offlineSessions.
+                // First, safely unlink the tracked Player from the world without touching socials.
+                if (tracked->IsInWorld())
+                {
+                    tracked->CleanupsBeforeDelete();
+                    if (Map* map = tracked->FindMap())
+                    {
+                        map->RemovePlayerFromMap(tracked, true);
+                        map->AfterPlayerUnlinkFromMap();
+                    }
+                }
+
+                // Detach the player from its session to avoid LogoutPlayer() later.
+                trackedSess->SetPlayer(nullptr);
+
+                // Close socket; do not mark as kicked so the session can retire cleanly.
                 trackedSess->KickPlayer("Bot takeover by real player", false);
+
+                // Finally, delete the tracked Player object to avoid leaks and duplicates.
+                delete tracked;
             }
 
             // In all cases, drop this bot from the master's map to avoid stale control
