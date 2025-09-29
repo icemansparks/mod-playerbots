@@ -400,6 +400,38 @@ void PlayerbotHolder::LogoutPlayerBot(ObjectGuid guid)
     }
 }
 
+void PlayerbotHolder::ForceLogoutPlayerBot(ObjectGuid guid)
+{
+    if (Player* bot = GetPlayerBot(guid))
+    {
+        PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot);
+        if (!botAI)
+            return;
+
+        Group* group = bot->GetGroup();
+        if (group && !bot->InBattleground() && !bot->InBattlegroundQueue() && botAI->HasActivePlayerMaster())
+        {
+            sPlayerbotDbStore->Save(botAI);
+        }
+
+        LOG_DEBUG("playerbots", "[Force] Bot {} logging out", bot->GetName().c_str());
+        bot->SaveToDB(false, false);
+
+        WorldSession* botWorldSessionPtr = bot->GetSession();
+
+        // Tell master and remove from our maps first
+        botAI->TellMaster("Goodbye!");
+        RemoveFromPlayerbotsMap(guid);
+
+        // Force immediate logout, letting the core run full player logout pipeline
+        if (botWorldSessionPtr)
+        {
+            botWorldSessionPtr->LogoutPlayer(true);
+            delete botWorldSessionPtr;
+        }
+    }
+}
+
 void PlayerbotHolder::DisablePlayerBot(ObjectGuid guid)
 {
     if (Player* bot = GetPlayerBot(guid))
@@ -1808,9 +1840,23 @@ void PlayerbotsMgr::DetachCharacterFromAllMasters(Player* player)
 
         if (mgr->GetPlayerBot(guid))
         {
-            // Now safe to use the normal core logout path (SocialMgr guarded in core).
-            // This cleanly removes the bot from map, sessions, and RandomPlayerbotMgr lists.
-            mgr->LogoutPlayerBot(guid);
+            // Force immediate logout to remove the stale bot body before the real player is fully in.
+            mgr->ForceLogoutPlayerBot(guid);
+        }
+    }
+
+    // Fallback: if the character is still connected as a bot outside of any master mapping, force logout
+    if (Player* stray = ObjectAccessor::FindConnectedPlayer(guid))
+    {
+        if (WorldSession* straySess = stray->GetSession())
+        {
+            if (straySess->IsBot())
+            {
+                LOG_DEBUG("playerbots", "[Force] Stray bot {} still connected, forcing logout", stray->GetName().c_str());
+                stray->SaveToDB(false, false);
+                straySess->LogoutPlayer(true);
+                delete straySess;
+            }
         }
     }
 }
