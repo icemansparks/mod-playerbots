@@ -1795,7 +1795,7 @@ void PlayerbotsMgr::DetachCharacterFromAllMasters(Player* player)
         }
     }
 
-    // Remove this character from any master's controlled bot list
+    // Remove this character from any master's controlled bot list (mapping only; let core manage sessions/players)
     for (auto& entry : _playerbotsMgrMap)
     {
         PlayerbotAIBase* base = entry.second;
@@ -1806,52 +1806,8 @@ void PlayerbotsMgr::DetachCharacterFromAllMasters(Player* player)
         if (!mgr)
             continue;
 
-        // If any manager still tracks this character as a bot, ensure it is not a live bot session
-        if (Player* tracked = mgr->GetPlayerBot(guid))
-        {
-            // Drop from the master's controlled-bots map first to avoid iterator use-after-free in the same tick
+        if (mgr->GetPlayerBot(guid))
             mgr->RemoveFromPlayerbotsMap(guid);
-
-            WorldSession* trackedSess = tracked->GetSession();
-
-            // If tracked player is (or was) a bot session, fully tear it down safely
-            if (trackedSess && trackedSess->IsBot())
-            {
-                // Inform RandomPlayerbotMgr so it removes this player from its tracking vectors
-                sRandomPlayerbotMgr->OnPlayerLogout(tracked);
-
-                // Delete bot AI mapping before deleting Player to prevent stale AI dereferences
-                if (PlayerbotAI* ai = GET_PLAYERBOT_AI(tracked))
-                {
-                    delete ai; // removes from sPlayerbotsMgr->_playerbotsAIMap
-                }
-
-                // Safely unlink the tracked Player from the world without touching socials
-                if (tracked->IsInWorld())
-                {
-                    tracked->CleanupsBeforeDelete();
-                    if (Map* map = tracked->FindMap())
-                    {
-                        map->RemovePlayerFromMap(tracked, true);
-                        map->AfterPlayerUnlinkFromMap();
-                    }
-                }
-
-                // Detach the player from its session to avoid LogoutPlayer() later.
-                trackedSess->SetPlayer(nullptr);
-
-                // Close socket; do not mark as kicked so the session can retire cleanly.
-                trackedSess->KickPlayer("Bot takeover by real player", false);
-
-                // Finally, delete the tracked Player object to avoid leaks and duplicates.
-                delete tracked;
-            }
-        }
-        else
-        {
-            // Make sure stale entries are removed
-            mgr->RemoveFromPlayerbotsMap(guid);
-        }
     }
 }
 
