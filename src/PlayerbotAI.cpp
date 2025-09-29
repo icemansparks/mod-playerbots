@@ -4479,16 +4479,19 @@ bool PlayerbotAI::AllowActive(ActivityType activityType)
         if (!bot || !bot->IsInWorld() || !bot->GetGUID())
             return false;
 
-        for (auto& player : sRandomPlayerbotMgr->GetPlayers())
+        // Work on a snapshot of the players list to avoid iterator invalidation
+        // and always resolve to the currently connected Player instance
+        auto playersSnapshot = sRandomPlayerbotMgr->GetPlayers();
+        for (Player* p : playersSnapshot)
         {
-            if (!player || !player->IsInWorld())
+            if (!p)
                 continue;
 
-            Player* connectedPlayer = ObjectAccessor::FindPlayer(player->GetGUID());
-            if (!connectedPlayer)
+            Player* connectedPlayer = ObjectAccessor::FindPlayer(p->GetGUID());
+            if (!connectedPlayer || !connectedPlayer->IsInWorld())
                 continue;
 
-            PlayerSocial* social = player->GetSocial();
+            PlayerSocial* social = connectedPlayer->GetSocial();
             if (!social)
                 continue;
 
