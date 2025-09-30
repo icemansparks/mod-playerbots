@@ -1847,6 +1847,11 @@ void PlayerbotsMgr::ProcessForceLogoutQueue()
             if (mgr && mgr->GetPlayerBot(guid))
             {
                 mgr->LogoutPlayerBot(guid, true);
+                if (Player* m = mgr->GetMaster())
+                {
+                    // Nudge master's visibility refresh so stale body disappears and new one appears
+                    m->UpdateObjectVisibility(false);
+                }
                 handled = true;
                 break;
             }
