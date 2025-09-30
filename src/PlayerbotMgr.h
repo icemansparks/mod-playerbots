@@ -121,9 +121,14 @@ public:
     // - If an AI exists and its master is someone else, clears the master and resets strategies
     void DetachCharacterFromAllMasters(Player* player);
 
+    // Queue a forced logout of a bot by GUID; processed safely on the next playerbots update tick
+    void EnqueueForceLogout(ObjectGuid guid);
+    void ProcessForceLogoutQueue();
+
 private:
     std::unordered_map<ObjectGuid, PlayerbotAIBase*> _playerbotsAIMap;
     std::unordered_map<ObjectGuid, PlayerbotAIBase*> _playerbotsMgrMap;
+    std::vector<ObjectGuid> _forceLogoutQueue;
 };
 
 #define sPlayerbotsMgr PlayerbotsMgr::instance()

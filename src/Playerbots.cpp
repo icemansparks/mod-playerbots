@@ -401,6 +401,8 @@ public:
 
     void OnPlayerbotUpdate(uint32 diff) override
     {
+        // Process any deferred forced logouts first to avoid stale bot bodies
+        sPlayerbotsMgr->ProcessForceLogoutQueue();
         sRandomPlayerbotMgr->UpdateAI(diff);
         sRandomPlayerbotMgr->UpdateSessions();
     }

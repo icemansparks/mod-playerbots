@@ -1808,23 +1808,58 @@ void PlayerbotsMgr::DetachCharacterFromAllMasters(Player* player)
 
         if (mgr->GetPlayerBot(guid))
         {
-            // Force immediate logout to remove the stale bot body before the real player is fully in.
-            mgr->LogoutPlayerBot(guid, true);
+            // Queue forced logout to be processed safely on the next update tick
+            EnqueueForceLogout(guid);
         }
     }
 
     // Fallback: if the character is still connected as a bot outside of any master mapping, force logout
+    // Also queue stray bot character for forced logout if connected
     if (Player* stray = ObjectAccessor::FindConnectedPlayer(guid))
-    {
         if (WorldSession* straySess = stray->GetSession())
-        {
             if (straySess->IsBot())
+                EnqueueForceLogout(guid);
+}
+
+void PlayerbotsMgr::EnqueueForceLogout(ObjectGuid guid)
+{
+    _forceLogoutQueue.push_back(guid);
+}
+
+void PlayerbotsMgr::ProcessForceLogoutQueue()
+{
+    if (_forceLogoutQueue.empty())
+        return;
+
+    std::vector<ObjectGuid> toProcess;
+    toProcess.swap(_forceLogoutQueue);
+
+    for (ObjectGuid const& guid : toProcess)
+    {
+        bool handled = false;
+        // Try all PlayerbotMgr instances (masters)
+        for (auto& entry : _playerbotsMgrMap)
+        {
+            PlayerbotAIBase* base = entry.second;
+            if (!base || base->IsBotAI())
+                continue;
+            PlayerbotMgr* mgr = reinterpret_cast<PlayerbotMgr*>(base);
+            if (mgr && mgr->GetPlayerBot(guid))
             {
-                LOG_DEBUG("playerbots", "[Force] Stray bot {} still connected, forcing logout", stray->GetName().c_str());
-                stray->SaveToDB(false, false);
-                straySess->LogoutPlayer(true);
-                delete straySess;
+                mgr->LogoutPlayerBot(guid, true);
+                handled = true;
+                break;
             }
+        }
+
+        if (handled)
+            continue;
+
+        // Fallback: random bots holder
+        if (Player* bot = sRandomPlayerbotMgr->GetPlayerBot(guid))
+        {
+            sRandomPlayerbotMgr->LogoutPlayerBot(guid, true);
+            handled = true;
         }
     }
 }
