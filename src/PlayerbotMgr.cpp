@@ -322,7 +322,7 @@ void PlayerbotHolder::LogoutPlayerBot(ObjectGuid guid, bool forceInstant)
         WorldSession* botWorldSessionPtr = bot->GetSession();
         WorldSession* masterWorldSessionPtr = nullptr;
 
-        if (botWorldSessionPtr->isLogingOut())
+        if (botWorldSessionPtr->isLogingOut() && !forceInstant)
             return;
 
         Player* master = botAI->GetMaster();
@@ -360,7 +360,11 @@ void PlayerbotHolder::LogoutPlayerBot(ObjectGuid guid, bool forceInstant)
 
         // Allow callers to force an immediate logout when required
         if (forceInstant)
+        {
             logout = true;
+            // Clear any pending delayed logout so we can proceed immediately
+            botWorldSessionPtr->SetLogoutStartTime(0);
+        }
 
         // if no instant logout, request normal logout
         if (!logout)
@@ -390,7 +394,7 @@ void PlayerbotHolder::LogoutPlayerBot(ObjectGuid guid, bool forceInstant)
             }
             return;
         }  // if instant logout possible, do it
-        else if (bot && logout && !botWorldSessionPtr->isLogingOut())
+        else if (bot && logout && (!botWorldSessionPtr->isLogingOut() || forceInstant))
         {
             botAI->TellMaster("Goodbye!");
             RemoveFromPlayerbotsMap(guid);                  // deletes bot player ptr inside this WorldSession PlayerBotMap
