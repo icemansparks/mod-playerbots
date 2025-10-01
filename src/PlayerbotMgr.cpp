@@ -1853,7 +1853,9 @@ void PlayerbotsMgr::ProcessForceLogoutQueue()
                 mgr->LogoutPlayerBot(guid, true);
                 if (Player* m = mgr->GetMaster())
                 {
-                    // Nudge master's visibility refresh so stale body disappears and new one appears
+                    // Force a full visibility rebuild for the master
+                    // to drop any stale references and pull in fresh objects.
+                    m->GetObjectVisibilityContainer().CleanVisibilityReferences();
                     m->UpdateObjectVisibility(false);
                 }
                 handled = true;
