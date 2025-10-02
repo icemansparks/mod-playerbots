@@ -155,6 +155,14 @@ public:
                 sPlayerbotsMgr->AddPlayerbotData(player, false);
             }
         }
+        else if (sess && sess->IsBot())
+        {
+            // Ensure that a bot session always has a live AI mapping
+            if (!GET_PLAYERBOT_AI(player))
+            {
+                sPlayerbotsMgr->AddPlayerbotData(player, true);
+            }
+        }
 
         if (PlayerbotAI* botAI = GET_PLAYERBOT_AI(player))
         {
