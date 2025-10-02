@@ -320,6 +320,18 @@ void PlayerbotHolder::LogoutPlayerBot(ObjectGuid guid, bool forceInstant)
         bot->SaveToDB(false, false);
 
         WorldSession* botWorldSessionPtr = bot->GetSession();
+        if (!botWorldSessionPtr)
+        {
+            RemoveFromPlayerbotsMap(guid);
+            return;
+        }
+
+        // Never attempt to log out a real player here; only bots are allowed.
+        if (!botWorldSessionPtr->IsBot())
+        {
+            RemoveFromPlayerbotsMap(guid);
+            return;
+        }
         WorldSession* masterWorldSessionPtr = nullptr;
 
         if (botWorldSessionPtr->isLogingOut() && !forceInstant)
@@ -1850,7 +1862,19 @@ void PlayerbotsMgr::ProcessForceLogoutQueue()
             PlayerbotMgr* mgr = reinterpret_cast<PlayerbotMgr*>(base);
             if (mgr && mgr->GetPlayerBot(guid))
             {
-                mgr->LogoutPlayerBot(guid, true);
+                // Drop mapping first so no further commands target this character
+                mgr->RemoveFromPlayerbotsMap(guid);
+
+                // If still connected as a bot session, force immediate logout
+                if (Player* b = ObjectAccessor::FindConnectedPlayer(guid))
+                {
+                    if (WorldSession* s = b->GetSession())
+                    {
+                        if (s->IsBot())
+                            mgr->LogoutPlayerBot(guid, true);
+                    }
+                }
+
                 if (Player* m = mgr->GetMaster())
                 {
                     // Force a full visibility rebuild for the master
@@ -1869,7 +1893,13 @@ void PlayerbotsMgr::ProcessForceLogoutQueue()
         // Fallback: random bots holder
         if (Player* bot = sRandomPlayerbotMgr->GetPlayerBot(guid))
         {
-            sRandomPlayerbotMgr->LogoutPlayerBot(guid, true);
+            // Drop mapping from random bot holder
+            sRandomPlayerbotMgr->RemoveFromPlayerbotsMap(guid);
+            if (WorldSession* s = bot->GetSession())
+            {
+                if (s->IsBot())
+                    sRandomPlayerbotMgr->LogoutPlayerBot(guid, true);
+            }
             handled = true;
         }
     }
