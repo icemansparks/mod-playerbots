@@ -94,6 +94,22 @@ public:
     {
         if (!player->GetSession()->IsBot())
         {
+            // Fix lingering mount auras from previous bot session: if the character logs in
+            // with mount-related auras but without an actual mount, clear them to avoid
+            // "mounted buff without mount visual" issues.
+            if (!player->IsMounted())
+            {
+                if (player->HasAuraType(SPELL_AURA_MOD_INCREASE_MOUNTED_SPEED) ||
+                    player->HasAuraType(SPELL_AURA_MOD_INCREASE_MOUNTED_FLIGHT_SPEED) ||
+                    player->HasAuraType(SPELL_AURA_MOUNTED))
+                {
+                    player->RemoveAurasByType(SPELL_AURA_MOD_INCREASE_MOUNTED_SPEED);
+                    player->RemoveAurasByType(SPELL_AURA_MOD_INCREASE_MOUNTED_FLIGHT_SPEED);
+                    player->RemoveAurasByType(SPELL_AURA_MOUNTED);
+                    player->Dismount();
+                }
+            }
+
             // If this character was previously running as a bot, drop any leftover AI to avoid
             // responding to bot chat commands (e.g. "nc ?") and to prevent dual ownership.
             if (PlayerbotAI* staleAI = GET_PLAYERBOT_AI(player))
