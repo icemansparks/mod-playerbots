@@ -179,11 +179,15 @@ public:
     {
         if (type == CHAT_MSG_WHISPER)
         {
-            if (PlayerbotAI* botAI = GET_PLAYERBOT_AI(receiver))
+            // Only intercept whispers to actual bot sessions
+            if (receiver && receiver->GetSession() && receiver->GetSession()->IsBot())
             {
-                botAI->HandleCommand(type, msg, player);
+                if (PlayerbotAI* botAI = GET_PLAYERBOT_AI(receiver))
+                {
+                    botAI->HandleCommand(type, msg, player);
 
-                return false;
+                    return false;
+                }
             }
         }
 
@@ -196,9 +200,13 @@ public:
         {
             if (Player* member = itr->GetSource())
             {
-                if (PlayerbotAI* botAI = GET_PLAYERBOT_AI(member))
+                // Only dispatch to members controlled by a bot session
+                if (member->GetSession() && member->GetSession()->IsBot())
                 {
-                    botAI->HandleCommand(type, msg, player);
+                    if (PlayerbotAI* botAI = GET_PLAYERBOT_AI(member))
+                    {
+                        botAI->HandleCommand(type, msg, player);
+                    }
                 }
             }
         }
