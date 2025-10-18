@@ -146,6 +146,10 @@ bool CheckMountStateAction::Execute(Event /*event*/)
 
     if (shouldDismount && bot->IsMounted())
     {
+        // If master dismounted, stay mounted until close enough to assist
+        if (StayMountedToCloseDistance())
+            return false;
+
         Dismount();
         return true;
     }
@@ -160,6 +164,10 @@ bool CheckMountStateAction::Execute(Event /*event*/)
 
         else if (ShouldDismountForMaster(master) && bot->IsMounted())
         {
+            // Stay mounted to close the gap if still far from master
+            if (StayMountedToCloseDistance())
+                return false;
+
             Dismount();
             return true;
         }
@@ -175,6 +183,9 @@ bool CheckMountStateAction::Execute(Event /*event*/)
     if (!bot->IsFlying() && shouldDismount && bot->IsMounted() &&
         (enemy || dps || (!noAttackers && bot->IsInCombat())))
     {
+        // If master just dismounted, prefer to stay mounted until within assist range
+        if (StayMountedToCloseDistance())
+            return false;
         Dismount();
         return true;
     }
@@ -395,6 +406,24 @@ bool CheckMountStateAction::TryRandomMountFiltered(const std::map<int32, std::ve
         }
     }
     return false;
+}
+
+bool CheckMountStateAction::StayMountedToCloseDistance() const
+{
+    // Keep the bot mounted while closing distance to a recently dismounted master.
+    // Rationale: if the master dismounts far away, immediately dismounting slows the bot down
+    // and delays assistance. Instead, remain mounted until within CalculateDismountDistance()
+    // of the master, then dismount to help.
+
+    if (!master)
+        return false;
+
+    if (!ShouldDismountForMaster(master))
+        return false;
+
+    float distToMaster = sServerFacade->GetDistance2d(bot, master);
+    float dismountRange = CalculateDismountDistance();
+    return distToMaster > dismountRange;
 }
 
 float CheckMountStateAction::CalculateDismountDistance() const
