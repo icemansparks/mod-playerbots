@@ -88,6 +88,12 @@ public:
     void HandleViewLinkedAccountsCommand(Player* player);
     void HandleUnlinkAccountCommand(Player* player, const std::string& accountName);
 
+    // Static methods for console commands (admin/GM access)
+    static bool SetSecurityKey(ChatHandler* handler, const std::string& accountName, const std::string& key);
+    static bool LinkAccounts(ChatHandler* handler, const std::string& accountName1, const std::string& accountName2, const std::string& key);
+    static bool ViewLinkedAccounts(ChatHandler* handler, const std::string& accountName);
+    static bool UnlinkAccounts(ChatHandler* handler, const std::string& accountName1, const std::string& accountName2);
+
 protected:
     void OnBotLoginInternal(Player* const bot) override;
     void CheckTellErrors(uint32 elapsed);

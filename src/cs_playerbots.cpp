@@ -41,6 +41,13 @@ public:
             {"unlink", HandleUnlinkAccountCommand, SEC_PLAYER, Console::No},
         };
 
+        static ChatCommandTable playerbotsAccountAdminCommandTable = {
+            {"setKey", HandleSetSecurityKeyConsoleCommand, SEC_ADMINISTRATOR, Console::Yes},
+            {"link", HandleLinkAccountConsoleCommand, SEC_ADMINISTRATOR, Console::Yes},
+            {"linkedAccounts", HandleViewLinkedAccountsConsoleCommand, SEC_ADMINISTRATOR, Console::Yes},
+            {"unlink", HandleUnlinkAccountConsoleCommand, SEC_ADMINISTRATOR, Console::Yes},
+        };
+
         static ChatCommandTable playerbotsCommandTable = {
             {"bot", HandlePlayerbotCommand, SEC_PLAYER, Console::No},
             {"gtask", HandleGuildTaskCommand, SEC_GAMEMASTER, Console::Yes},
@@ -48,6 +55,7 @@ public:
             {"rndbot", HandleRandomPlayerbotCommand, SEC_GAMEMASTER, Console::Yes},
             {"debug", playerbotsDebugCommandTable},
             {"account", playerbotsAccountCommandTable},
+            {"accountAdmin", playerbotsAccountAdminCommandTable},
         };
 
         static ChatCommandTable commandTable = {
@@ -206,6 +214,86 @@ public:
             handler->PSendSysMessage("PlayerbotMgr instance not found.");
             return false;
         }
+    }
+
+    // Console (admin/GM) command handlers
+    static bool HandleSetSecurityKeyConsoleCommand(ChatHandler* handler, char const* args)
+    {
+        if (!args || !*args)
+        {
+            handler->PSendSysMessage("Usage: .playerbots accountAdmin setKey <accountName> <securityKey>");
+            return false;
+        }
+
+        char* accountName = strtok((char*)args, " ");
+        char* key = strtok(nullptr, " ");
+
+        if (!accountName || !key)
+        {
+            handler->PSendSysMessage("Usage: .playerbots accountAdmin setKey <accountName> <securityKey>");
+            return false;
+        }
+
+        return PlayerbotMgr::SetSecurityKey(handler, accountName, key);
+    }
+
+    static bool HandleLinkAccountConsoleCommand(ChatHandler* handler, char const* args)
+    {
+        if (!args || !*args)
+        {
+            handler->PSendSysMessage("Usage: .playerbots accountAdmin link <accountName1> <accountName2> <securityKey>");
+            return false;
+        }
+
+        char* accountName1 = strtok((char*)args, " ");
+        char* accountName2 = strtok(nullptr, " ");
+        char* key = strtok(nullptr, " ");
+
+        if (!accountName1 || !accountName2 || !key)
+        {
+            handler->PSendSysMessage("Usage: .playerbots accountAdmin link <accountName1> <accountName2> <securityKey>");
+            return false;
+        }
+
+        return PlayerbotMgr::LinkAccounts(handler, accountName1, accountName2, key);
+    }
+
+    static bool HandleViewLinkedAccountsConsoleCommand(ChatHandler* handler, char const* args)
+    {
+        if (!args || !*args)
+        {
+            handler->PSendSysMessage("Usage: .playerbots accountAdmin linkedAccounts <accountName>");
+            return false;
+        }
+
+        char* accountName = strtok((char*)args, " ");
+        if (!accountName)
+        {
+            handler->PSendSysMessage("Usage: .playerbots accountAdmin linkedAccounts <accountName>");
+            return false;
+        }
+
+        return PlayerbotMgr::ViewLinkedAccounts(handler, accountName);
+    }
+
+    static bool HandleUnlinkAccountConsoleCommand(ChatHandler* handler, char const* args)
+    {
+        if (!args || !*args)
+        {
+            handler->PSendSysMessage("Usage: .playerbots accountAdmin unlink <accountName1> <accountName2>");
+            return false;
+        }
+
+        char* accountName1 = strtok((char*)args, " ");
+        char* accountName2 = strtok(nullptr, " ");
+
+        if (!accountName1 || !accountName2)
+        {
+            handler->PSendSysMessage("Usage: .playerbots accountAdmin unlink <accountName1> <accountName2>");
+            return false;
+        }
+
+        return PlayerbotMgr::UnlinkAccounts(handler, accountName1, accountName2);
     }
 };
 

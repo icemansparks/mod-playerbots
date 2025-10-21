@@ -1882,3 +1882,169 @@ void PlayerbotMgr::HandleUnlinkAccountCommand(Player* player, const std::string&
 
     ChatHandler(player->GetSession()).PSendSysMessage("Account unlinked successfully.");
 }
+
+// Static console command implementations
+bool PlayerbotMgr::SetSecurityKey(ChatHandler* handler, const std::string& accountName, const std::string& key)
+{
+    // Get account ID from account name
+    QueryResult result = LoginDatabase.Query("SELECT id FROM account WHERE username = '{}'", accountName);
+    if (!result)
+    {
+        handler->PSendSysMessage("Account '{}' not found.", accountName.c_str());
+        return false;
+    }
+
+    Field* fields = result->Fetch();
+    uint32 accountId = fields[0].Get<uint32>();
+
+    // Hash the security key using SHA-256
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+    SHA256((unsigned char*)key.c_str(), key.size(), hash);
+
+    // Convert the hash to a hexadecimal string
+    std::ostringstream hashedKey;
+    for (int i = 0; i < SHA256_DIGEST_LENGTH; ++i)
+        hashedKey << std::hex << std::setw(2) << std::setfill('0') << (int)hash[i];
+
+    // Store the hashed key in the database
+    PlayerbotsDatabase.Execute(
+        "REPLACE INTO playerbots_account_keys (account_id, security_key) VALUES ({}, '{}')",
+        accountId, hashedKey.str());
+
+    handler->PSendSysMessage("Security key set successfully for account '{}'.", accountName.c_str());
+    return true;
+}
+
+bool PlayerbotMgr::LinkAccounts(ChatHandler* handler, const std::string& accountName1, const std::string& accountName2, const std::string& key)
+{
+    // Get account IDs from account names
+    QueryResult result1 = LoginDatabase.Query("SELECT id FROM account WHERE username = '{}'", accountName1);
+    if (!result1)
+    {
+        handler->PSendSysMessage("Account '{}' not found.", accountName1.c_str());
+        return false;
+    }
+
+    QueryResult result2 = LoginDatabase.Query("SELECT id FROM account WHERE username = '{}'", accountName2);
+    if (!result2)
+    {
+        handler->PSendSysMessage("Account '{}' not found.", accountName2.c_str());
+        return false;
+    }
+
+    Field* fields1 = result1->Fetch();
+    uint32 accountId1 = fields1[0].Get<uint32>();
+
+    Field* fields2 = result2->Fetch();
+    uint32 accountId2 = fields2[0].Get<uint32>();
+
+    // Verify the security key for account2
+    QueryResult keyResult = PlayerbotsDatabase.Query("SELECT security_key FROM playerbots_account_keys WHERE account_id = {}", accountId2);
+    if (!keyResult)
+    {
+        handler->PSendSysMessage("No security key set for account '{}'. Set one first using setKey command.", accountName2.c_str());
+        return false;
+    }
+
+    // Hash the provided key
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+    SHA256((unsigned char*)key.c_str(), key.size(), hash);
+
+    // Convert the hash to a hexadecimal string
+    std::ostringstream hashedKey;
+    for (int i = 0; i < SHA256_DIGEST_LENGTH; ++i)
+        hashedKey << std::hex << std::setw(2) << std::setfill('0') << (int)hash[i];
+
+    // Compare the hashed key with the stored hashed key
+    std::string storedKey = keyResult->Fetch()->Get<std::string>();
+    if (hashedKey.str() != storedKey)
+    {
+        handler->PSendSysMessage("Invalid security key for account '{}'.", accountName2.c_str());
+        return false;
+    }
+
+    // Create bidirectional link
+    PlayerbotsDatabase.Execute(
+        "INSERT IGNORE INTO playerbots_account_links (account_id, linked_account_id) VALUES ({}, {})",
+        accountId1, accountId2);
+    PlayerbotsDatabase.Execute(
+        "INSERT IGNORE INTO playerbots_account_links (account_id, linked_account_id) VALUES ({}, {})",
+        accountId2, accountId1);
+
+    handler->PSendSysMessage("Accounts '{}' and '{}' linked successfully.", accountName1.c_str(), accountName2.c_str());
+    return true;
+}
+
+bool PlayerbotMgr::ViewLinkedAccounts(ChatHandler* handler, const std::string& accountName)
+{
+    // Get account ID from account name
+    QueryResult result = LoginDatabase.Query("SELECT id FROM account WHERE username = '{}'", accountName);
+    if (!result)
+    {
+        handler->PSendSysMessage("Account '{}' not found.", accountName.c_str());
+        return false;
+    }
+
+    Field* fields = result->Fetch();
+    uint32 accountId = fields[0].Get<uint32>();
+
+    QueryResult linkResult = PlayerbotsDatabase.Query("SELECT linked_account_id FROM playerbots_account_links WHERE account_id = {}", accountId);
+
+    if (!linkResult)
+    {
+        handler->PSendSysMessage("Account '{}' has no linked accounts.", accountName.c_str());
+        return true;
+    }
+
+    handler->PSendSysMessage("Linked accounts for '{}':", accountName.c_str());
+    do
+    {
+        Field* linkFields = linkResult->Fetch();
+        uint32 linkedAccountId = linkFields[0].Get<uint32>();
+
+        QueryResult accountResult = LoginDatabase.Query("SELECT username FROM account WHERE id = {}", linkedAccountId);
+        if (accountResult)
+        {
+            Field* accountFields = accountResult->Fetch();
+            std::string username = accountFields[0].Get<std::string>();
+            handler->PSendSysMessage("- {}", username.c_str());
+        }
+        else
+        {
+            handler->PSendSysMessage("- Unknown account (ID: {})", linkedAccountId);
+        }
+    } while (linkResult->NextRow());
+
+    return true;
+}
+
+bool PlayerbotMgr::UnlinkAccounts(ChatHandler* handler, const std::string& accountName1, const std::string& accountName2)
+{
+    // Get account IDs from account names
+    QueryResult result1 = LoginDatabase.Query("SELECT id FROM account WHERE username = '{}'", accountName1);
+    if (!result1)
+    {
+        handler->PSendSysMessage("Account '{}' not found.", accountName1.c_str());
+        return false;
+    }
+
+    QueryResult result2 = LoginDatabase.Query("SELECT id FROM account WHERE username = '{}'", accountName2);
+    if (!result2)
+    {
+        handler->PSendSysMessage("Account '{}' not found.", accountName2.c_str());
+        return false;
+    }
+
+    Field* fields1 = result1->Fetch();
+    uint32 accountId1 = fields1[0].Get<uint32>();
+
+    Field* fields2 = result2->Fetch();
+    uint32 accountId2 = fields2[0].Get<uint32>();
+
+    // Remove bidirectional link
+    PlayerbotsDatabase.Execute("DELETE FROM playerbots_account_links WHERE (account_id = {} AND linked_account_id = {}) OR (account_id = {} AND linked_account_id = {})",
+                                accountId1, accountId2, accountId2, accountId1);
+
+    handler->PSendSysMessage("Accounts '{}' and '{}' unlinked successfully.", accountName1.c_str(), accountName2.c_str());
+    return true;
+}
