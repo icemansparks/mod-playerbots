@@ -41,11 +41,16 @@ public:
             {"unlink", HandleUnlinkAccountCommand, SEC_PLAYER, Console::No},
         };
 
-        static ChatCommandTable playerbotsAccountAdminCommandTable = {
-            {"setKey", HandleSetSecurityKeyConsoleCommand, SEC_ADMINISTRATOR, Console::Yes},
-            {"link", HandleLinkAccountConsoleCommand, SEC_ADMINISTRATOR, Console::Yes},
-            {"linkedAccounts", HandleViewLinkedAccountsConsoleCommand, SEC_ADMINISTRATOR, Console::Yes},
-            {"unlink", HandleUnlinkAccountConsoleCommand, SEC_ADMINISTRATOR, Console::Yes},
+        // Console-only commands (not accessible in-game)
+        static ChatCommandTable playerbotAccountConsoleCommandTable = {
+            {"setkey", HandleSetKeyConsoleCommand, SEC_ADMINISTRATOR, Console::Yes},
+            {"link", HandleLinkConsoleCommand, SEC_ADMINISTRATOR, Console::Yes},
+            {"linkedaccounts", HandleLinkedAccountsConsoleCommand, SEC_ADMINISTRATOR, Console::Yes},
+            {"unlink", HandleUnlinkConsoleCommand, SEC_ADMINISTRATOR, Console::Yes},
+        };
+
+        static ChatCommandTable playerbotConsoleCommandTable = {
+            {"account", playerbotAccountConsoleCommandTable},
         };
 
         static ChatCommandTable playerbotsCommandTable = {
@@ -55,10 +60,10 @@ public:
             {"rndbot", HandleRandomPlayerbotCommand, SEC_GAMEMASTER, Console::Yes},
             {"debug", playerbotsDebugCommandTable},
             {"account", playerbotsAccountCommandTable},
-            {"accountAdmin", playerbotsAccountAdminCommandTable},
         };
 
         static ChatCommandTable commandTable = {
+            {"playerbot", playerbotConsoleCommandTable},
             {"playerbots", playerbotsCommandTable},
         };
 
@@ -216,84 +221,53 @@ public:
         }
     }
 
-    // Console (admin/GM) command handlers
-    static bool HandleSetSecurityKeyConsoleCommand(ChatHandler* handler, char const* args)
+    // Console-only command handlers (server console only, not accessible in-game)
+    static bool HandleSetKeyConsoleCommand(ChatHandler* handler, char const* args)
     {
-        if (!args || !*args)
+        // Reject if called from in-game (has a session)
+        if (handler->GetSession())
         {
-            handler->PSendSysMessage("Usage: .playerbots accountAdmin setKey <accountName> <securityKey>");
+            handler->PSendSysMessage("This command can only be used from the server console.");
             return false;
         }
 
-        char* accountName = strtok((char*)args, " ");
-        char* key = strtok(nullptr, " ");
-
-        if (!accountName || !key)
-        {
-            handler->PSendSysMessage("Usage: .playerbots accountAdmin setKey <accountName> <securityKey>");
-            return false;
-        }
-
-        return PlayerbotMgr::SetSecurityKey(handler, accountName, key);
+        return PlayerbotMgr::HandleSetSecurityKeyConsoleCommand(args);
     }
 
-    static bool HandleLinkAccountConsoleCommand(ChatHandler* handler, char const* args)
+    static bool HandleLinkConsoleCommand(ChatHandler* handler, char const* args)
     {
-        if (!args || !*args)
+        // Reject if called from in-game (has a session)
+        if (handler->GetSession())
         {
-            handler->PSendSysMessage("Usage: .playerbots accountAdmin link <accountName1> <accountName2> <securityKey>");
+            handler->PSendSysMessage("This command can only be used from the server console.");
             return false;
         }
 
-        char* accountName1 = strtok((char*)args, " ");
-        char* accountName2 = strtok(nullptr, " ");
-        char* key = strtok(nullptr, " ");
-
-        if (!accountName1 || !accountName2 || !key)
-        {
-            handler->PSendSysMessage("Usage: .playerbots accountAdmin link <accountName1> <accountName2> <securityKey>");
-            return false;
-        }
-
-        return PlayerbotMgr::LinkAccounts(handler, accountName1, accountName2, key);
+        return PlayerbotMgr::HandleLinkAccountConsoleCommand(args);
     }
 
-    static bool HandleViewLinkedAccountsConsoleCommand(ChatHandler* handler, char const* args)
+    static bool HandleLinkedAccountsConsoleCommand(ChatHandler* handler, char const* args)
     {
-        if (!args || !*args)
+        // Reject if called from in-game (has a session)
+        if (handler->GetSession())
         {
-            handler->PSendSysMessage("Usage: .playerbots accountAdmin linkedAccounts <accountName>");
+            handler->PSendSysMessage("This command can only be used from the server console.");
             return false;
         }
 
-        char* accountName = strtok((char*)args, " ");
-        if (!accountName)
-        {
-            handler->PSendSysMessage("Usage: .playerbots accountAdmin linkedAccounts <accountName>");
-            return false;
-        }
-
-        return PlayerbotMgr::ViewLinkedAccounts(handler, accountName);
+        return PlayerbotMgr::HandleViewLinkedAccountsConsoleCommand(args);
     }
 
-    static bool HandleUnlinkAccountConsoleCommand(ChatHandler* handler, char const* args)
+    static bool HandleUnlinkConsoleCommand(ChatHandler* handler, char const* args)
     {
-        if (!args || !*args)
+        // Reject if called from in-game (has a session)
+        if (handler->GetSession())
         {
-            handler->PSendSysMessage("Usage: .playerbots accountAdmin unlink <accountName1> <accountName2>");
+            handler->PSendSysMessage("This command can only be used from the server console.");
             return false;
         }
 
-        char* accountName1 = strtok((char*)args, " ");
-        char* accountName2 = strtok(nullptr, " ");
-
-        if (!accountName1 || !accountName2)
-        {
-            handler->PSendSysMessage("Usage: .playerbots accountAdmin unlink <accountName1> <accountName2>");
-            return false;
-        }
-
-        return PlayerbotMgr::UnlinkAccounts(handler, accountName1, accountName2);
+        return PlayerbotMgr::HandleUnlinkAccountConsoleCommand(args);
     }
 };
 

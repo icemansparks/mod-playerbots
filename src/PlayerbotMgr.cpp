@@ -1883,14 +1883,29 @@ void PlayerbotMgr::HandleUnlinkAccountCommand(Player* player, const std::string&
     ChatHandler(player->GetSession()).PSendSysMessage("Account unlinked successfully.");
 }
 
-// Static console command implementations
-bool PlayerbotMgr::SetSecurityKey(ChatHandler* handler, const std::string& accountName, const std::string& key)
+// Console-only command implementations (server console only, not accessible in-game)
+bool PlayerbotMgr::HandleSetSecurityKeyConsoleCommand(char const* args)
 {
+    if (!args || !*args)
+    {
+        LOG_ERROR("playerbots", "Usage: playerbot account setkey <accountName> <securityKey>");
+        return false;
+    }
+
+    char* accountName = strtok((char*)args, " ");
+    char* key = strtok(nullptr, " ");
+
+    if (!accountName || !key)
+    {
+        LOG_ERROR("playerbots", "Usage: playerbot account setkey <accountName> <securityKey>");
+        return false;
+    }
+
     // Get account ID from account name
     QueryResult result = LoginDatabase.Query("SELECT id FROM account WHERE username = '{}'", accountName);
     if (!result)
     {
-        handler->PSendSysMessage("Account '{}' not found.", accountName.c_str());
+        LOG_ERROR("playerbots", "Account '{}' not found.", accountName);
         return false;
     }
 
@@ -1899,7 +1914,7 @@ bool PlayerbotMgr::SetSecurityKey(ChatHandler* handler, const std::string& accou
 
     // Hash the security key using SHA-256
     unsigned char hash[SHA256_DIGEST_LENGTH];
-    SHA256((unsigned char*)key.c_str(), key.size(), hash);
+    SHA256((unsigned char*)key, strlen(key), hash);
 
     // Convert the hash to a hexadecimal string
     std::ostringstream hashedKey;
@@ -1911,24 +1926,40 @@ bool PlayerbotMgr::SetSecurityKey(ChatHandler* handler, const std::string& accou
         "REPLACE INTO playerbots_account_keys (account_id, security_key) VALUES ({}, '{}')",
         accountId, hashedKey.str());
 
-    handler->PSendSysMessage("Security key set successfully for account '{}'.", accountName.c_str());
+    LOG_INFO("playerbots", "Security key set successfully for account '{}'.", accountName);
     return true;
 }
 
-bool PlayerbotMgr::LinkAccounts(ChatHandler* handler, const std::string& accountName1, const std::string& accountName2, const std::string& key)
+bool PlayerbotMgr::HandleLinkAccountConsoleCommand(char const* args)
 {
+    if (!args || !*args)
+    {
+        LOG_ERROR("playerbots", "Usage: playerbot account link <accountName1> <accountName2> <securityKey>");
+        return false;
+    }
+
+    char* accountName1 = strtok((char*)args, " ");
+    char* accountName2 = strtok(nullptr, " ");
+    char* key = strtok(nullptr, " ");
+
+    if (!accountName1 || !accountName2 || !key)
+    {
+        LOG_ERROR("playerbots", "Usage: playerbot account link <accountName1> <accountName2> <securityKey>");
+        return false;
+    }
+
     // Get account IDs from account names
     QueryResult result1 = LoginDatabase.Query("SELECT id FROM account WHERE username = '{}'", accountName1);
     if (!result1)
     {
-        handler->PSendSysMessage("Account '{}' not found.", accountName1.c_str());
+        LOG_ERROR("playerbots", "Account '{}' not found.", accountName1);
         return false;
     }
 
     QueryResult result2 = LoginDatabase.Query("SELECT id FROM account WHERE username = '{}'", accountName2);
     if (!result2)
     {
-        handler->PSendSysMessage("Account '{}' not found.", accountName2.c_str());
+        LOG_ERROR("playerbots", "Account '{}' not found.", accountName2);
         return false;
     }
 
@@ -1942,13 +1973,13 @@ bool PlayerbotMgr::LinkAccounts(ChatHandler* handler, const std::string& account
     QueryResult keyResult = PlayerbotsDatabase.Query("SELECT security_key FROM playerbots_account_keys WHERE account_id = {}", accountId2);
     if (!keyResult)
     {
-        handler->PSendSysMessage("No security key set for account '{}'. Set one first using setKey command.", accountName2.c_str());
+        LOG_ERROR("playerbots", "No security key set for account '{}'. Set one first using setkey command.", accountName2);
         return false;
     }
 
     // Hash the provided key
     unsigned char hash[SHA256_DIGEST_LENGTH];
-    SHA256((unsigned char*)key.c_str(), key.size(), hash);
+    SHA256((unsigned char*)key, strlen(key), hash);
 
     // Convert the hash to a hexadecimal string
     std::ostringstream hashedKey;
@@ -1959,7 +1990,7 @@ bool PlayerbotMgr::LinkAccounts(ChatHandler* handler, const std::string& account
     std::string storedKey = keyResult->Fetch()->Get<std::string>();
     if (hashedKey.str() != storedKey)
     {
-        handler->PSendSysMessage("Invalid security key for account '{}'.", accountName2.c_str());
+        LOG_ERROR("playerbots", "Invalid security key for account '{}'.", accountName2);
         return false;
     }
 
@@ -1971,17 +2002,30 @@ bool PlayerbotMgr::LinkAccounts(ChatHandler* handler, const std::string& account
         "INSERT IGNORE INTO playerbots_account_links (account_id, linked_account_id) VALUES ({}, {})",
         accountId2, accountId1);
 
-    handler->PSendSysMessage("Accounts '{}' and '{}' linked successfully.", accountName1.c_str(), accountName2.c_str());
+    LOG_INFO("playerbots", "Accounts '{}' and '{}' linked successfully.", accountName1, accountName2);
     return true;
 }
 
-bool PlayerbotMgr::ViewLinkedAccounts(ChatHandler* handler, const std::string& accountName)
+bool PlayerbotMgr::HandleViewLinkedAccountsConsoleCommand(char const* args)
 {
+    if (!args || !*args)
+    {
+        LOG_ERROR("playerbots", "Usage: playerbot account linkedaccounts <accountName>");
+        return false;
+    }
+
+    char* accountName = strtok((char*)args, " ");
+    if (!accountName)
+    {
+        LOG_ERROR("playerbots", "Usage: playerbot account linkedaccounts <accountName>");
+        return false;
+    }
+
     // Get account ID from account name
     QueryResult result = LoginDatabase.Query("SELECT id FROM account WHERE username = '{}'", accountName);
     if (!result)
     {
-        handler->PSendSysMessage("Account '{}' not found.", accountName.c_str());
+        LOG_ERROR("playerbots", "Account '{}' not found.", accountName);
         return false;
     }
 
@@ -1992,11 +2036,11 @@ bool PlayerbotMgr::ViewLinkedAccounts(ChatHandler* handler, const std::string& a
 
     if (!linkResult)
     {
-        handler->PSendSysMessage("Account '{}' has no linked accounts.", accountName.c_str());
+        LOG_INFO("playerbots", "Account '{}' has no linked accounts.", accountName);
         return true;
     }
 
-    handler->PSendSysMessage("Linked accounts for '{}':", accountName.c_str());
+    LOG_INFO("playerbots", "Linked accounts for '{}':", accountName);
     do
     {
         Field* linkFields = linkResult->Fetch();
@@ -2007,31 +2051,46 @@ bool PlayerbotMgr::ViewLinkedAccounts(ChatHandler* handler, const std::string& a
         {
             Field* accountFields = accountResult->Fetch();
             std::string username = accountFields[0].Get<std::string>();
-            handler->PSendSysMessage("- {}", username.c_str());
+            LOG_INFO("playerbots", "- {}", username.c_str());
         }
         else
         {
-            handler->PSendSysMessage("- Unknown account (ID: {})", linkedAccountId);
+            LOG_INFO("playerbots", "- Unknown account (ID: {})", linkedAccountId);
         }
     } while (linkResult->NextRow());
 
     return true;
 }
 
-bool PlayerbotMgr::UnlinkAccounts(ChatHandler* handler, const std::string& accountName1, const std::string& accountName2)
+bool PlayerbotMgr::HandleUnlinkAccountConsoleCommand(char const* args)
 {
+    if (!args || !*args)
+    {
+        LOG_ERROR("playerbots", "Usage: playerbot account unlink <accountName1> <accountName2>");
+        return false;
+    }
+
+    char* accountName1 = strtok((char*)args, " ");
+    char* accountName2 = strtok(nullptr, " ");
+
+    if (!accountName1 || !accountName2)
+    {
+        LOG_ERROR("playerbots", "Usage: playerbot account unlink <accountName1> <accountName2>");
+        return false;
+    }
+
     // Get account IDs from account names
     QueryResult result1 = LoginDatabase.Query("SELECT id FROM account WHERE username = '{}'", accountName1);
     if (!result1)
     {
-        handler->PSendSysMessage("Account '{}' not found.", accountName1.c_str());
+        LOG_ERROR("playerbots", "Account '{}' not found.", accountName1);
         return false;
     }
 
     QueryResult result2 = LoginDatabase.Query("SELECT id FROM account WHERE username = '{}'", accountName2);
     if (!result2)
     {
-        handler->PSendSysMessage("Account '{}' not found.", accountName2.c_str());
+        LOG_ERROR("playerbots", "Account '{}' not found.", accountName2);
         return false;
     }
 
@@ -2045,6 +2104,6 @@ bool PlayerbotMgr::UnlinkAccounts(ChatHandler* handler, const std::string& accou
     PlayerbotsDatabase.Execute("DELETE FROM playerbots_account_links WHERE (account_id = {} AND linked_account_id = {}) OR (account_id = {} AND linked_account_id = {})",
                                 accountId1, accountId2, accountId2, accountId1);
 
-    handler->PSendSysMessage("Accounts '{}' and '{}' unlinked successfully.", accountName1.c_str(), accountName2.c_str());
+    LOG_INFO("playerbots", "Accounts '{}' and '{}' unlinked successfully.", accountName1, accountName2);
     return true;
 }
