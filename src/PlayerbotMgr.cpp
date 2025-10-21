@@ -1934,17 +1934,16 @@ bool PlayerbotMgr::HandleLinkAccountConsoleCommand(char const* args)
 {
     if (!args || !*args)
     {
-        LOG_ERROR("playerbots", "Usage: playerbot account link <accountName1> <accountName2> <securityKey>");
+        LOG_ERROR("playerbots", "Usage: playerbot account link <accountName1> <accountName2>");
         return false;
     }
 
     char* accountName1 = strtok((char*)args, " ");
     char* accountName2 = strtok(nullptr, " ");
-    char* key = strtok(nullptr, " ");
 
-    if (!accountName1 || !accountName2 || !key)
+    if (!accountName1 || !accountName2)
     {
-        LOG_ERROR("playerbots", "Usage: playerbot account link <accountName1> <accountName2> <securityKey>");
+        LOG_ERROR("playerbots", "Usage: playerbot account link <accountName1> <accountName2>");
         return false;
     }
 
@@ -1969,32 +1968,7 @@ bool PlayerbotMgr::HandleLinkAccountConsoleCommand(char const* args)
     Field* fields2 = result2->Fetch();
     uint32 accountId2 = fields2[0].Get<uint32>();
 
-    // Verify the security key for account2
-    QueryResult keyResult = PlayerbotsDatabase.Query("SELECT security_key FROM playerbots_account_keys WHERE account_id = {}", accountId2);
-    if (!keyResult)
-    {
-        LOG_ERROR("playerbots", "No security key set for account '{}'. Set one first using setkey command.", accountName2);
-        return false;
-    }
-
-    // Hash the provided key
-    unsigned char hash[SHA256_DIGEST_LENGTH];
-    SHA256((unsigned char*)key, strlen(key), hash);
-
-    // Convert the hash to a hexadecimal string
-    std::ostringstream hashedKey;
-    for (int i = 0; i < SHA256_DIGEST_LENGTH; ++i)
-        hashedKey << std::hex << std::setw(2) << std::setfill('0') << (int)hash[i];
-
-    // Compare the hashed key with the stored hashed key
-    std::string storedKey = keyResult->Fetch()->Get<std::string>();
-    if (hashedKey.str() != storedKey)
-    {
-        LOG_ERROR("playerbots", "Invalid security key for account '{}'.", accountName2);
-        return false;
-    }
-
-    // Create bidirectional link
+    // Create bidirectional link (no security key verification needed for console commands)
     PlayerbotsDatabase.Execute(
         "INSERT IGNORE INTO playerbots_account_links (account_id, linked_account_id) VALUES ({}, {})",
         accountId1, accountId2);
