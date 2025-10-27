@@ -39,6 +39,15 @@ public:
             {"link", HandleLinkAccountCommand, SEC_PLAYER, Console::No},
             {"linkedAccounts", HandleViewLinkedAccountsCommand, SEC_PLAYER, Console::No},
             {"unlink", HandleUnlinkAccountCommand, SEC_PLAYER, Console::No},
+            {"admin", playerbotsAccountConsoleCommandTable, SEC_ADMINISTRATOR, Console::Yes},
+        };
+
+        // Console-only commands (not accessible in-game)
+        static ChatCommandTable playerbotsAccountConsoleCommandTable = {
+            {"setKey", HandlePlayerbotConsoleCommand, SEC_ADMINISTRATOR, Console::Yes},
+            {"link", HandlePlayerbotConsoleCommand, SEC_ADMINISTRATOR, Console::Yes},
+            {"linkedAccounts", HandlePlayerbotConsoleCommand, SEC_ADMINISTRATOR, Console::Yes},
+            {"unlink", HandlePlayerbotConsoleCommand, SEC_ADMINISTRATOR, Console::Yes},
         };
 
         static ChatCommandTable playerbotsCommandTable = {
@@ -206,6 +215,19 @@ public:
             handler->PSendSysMessage("PlayerbotMgr instance not found.");
             return false;
         }
+    }
+
+    // Centralized console command handler (server console only, not accessible in-game)
+    static bool HandlePlayerbotConsoleCommand(ChatHandler* handler, char const* args)
+    {
+        // Reject if called from in-game (has a session)
+        if (handler->GetSession())
+        {
+            handler->PSendSysMessage("This command can only be used from the server console.");
+            return false;
+        }
+
+        return PlayerbotMgr::HandleConsoleCommand(handler, args);
     }
 };
 

@@ -12,6 +12,7 @@
 #include <openssl/sha.h>
 #include <unordered_set>
 #include <iomanip>
+#include <optional>
 
 #include "ChannelMgr.h"
 #include "CharacterCache.h"
@@ -1881,4 +1882,264 @@ void PlayerbotMgr::HandleUnlinkAccountCommand(Player* player, const std::string&
                                 accountId, linkedAccountId, linkedAccountId, accountId);
 
     ChatHandler(player->GetSession()).PSendSysMessage("Account unlinked successfully.");
+}
+
+// Helper functions for console commands
+namespace {
+    // Helper function to get account ID from account name with error logging
+    std::optional<uint32> GetAccountIdByName(const std::string& accountName) {
+        QueryResult result = LoginDatabase.Query("SELECT id FROM account WHERE username = '{}'", accountName);
+        if (!result) {
+            LOG_ERROR("playerbots", "Account '{}' not found.", accountName);
+            return std::nullopt;
+        }
+
+        Field* fields = result->Fetch();
+        return fields[0].Get<uint32>();
+    }
+
+    // Helper function to get account name from account ID
+    std::optional<std::string> GetAccountNameById(uint32 accountId) {
+        QueryResult result = LoginDatabase.Query("SELECT username FROM account WHERE id = {}", accountId);
+        if (!result) {
+            return std::nullopt;
+        }
+
+        Field* fields = result->Fetch();
+        return fields[0].Get<std::string>();
+    }
+
+    // Helper function to parse two account names from arguments
+    std::pair<std::optional<std::string>, std::optional<std::string>> ParseTwoAccountNames(char const* args) {
+        if (!args || !*args) {
+            return {std::nullopt, std::nullopt};
+        }
+
+        char* accountName1 = strtok((char*)args, " ");
+        char* accountName2 = strtok(nullptr, " ");
+
+        if (!accountName1 || !accountName2) {
+            return {std::nullopt, std::nullopt};
+        }
+
+        return {std::string(accountName1), std::string(accountName2)};
+    }
+
+    // Helper function to hash security key using SHA-256
+    std::string HashSecurityKey(const std::string& key) {
+        unsigned char hash[SHA256_DIGEST_LENGTH];
+        SHA256((unsigned char*)key.c_str(), key.length(), hash);
+
+        std::ostringstream hashedKey;
+        for (int i = 0; i < SHA256_DIGEST_LENGTH; ++i) {
+            hashedKey << std::hex << std::setw(2) << std::setfill('0') << (int)hash[i];
+        }
+        return hashedKey.str();
+    }
+}
+
+// Console-only command implementations (server console only, not accessible in-game)
+bool PlayerbotMgr::HandleConsoleCommand(ChatHandler* handler, char const* args)
+{
+    if (!args || !*args)
+    {
+        LOG_ERROR("playerbots", "Usage: playerbots admin <setKey|link|linkedAccounts|unlink> [args...]");
+        return false;
+    }
+
+    char* command = strtok((char*)args, " ");
+    if (!command)
+    {
+        LOG_ERROR("playerbots", "Usage: playerbots admin <setKey|link|linkedAccounts|unlink> [args...]");
+        return false;
+    }
+
+    // Get remaining arguments
+    char* remainingArgs = strtok(nullptr, "");
+
+    std::string cmd = command;
+    if (cmd == "setKey")
+    {
+        return HandleSetSecurityKeyConsoleCommand(remainingArgs);
+    }
+    else if (cmd == "link")
+    {
+        return HandleLinkAccountConsoleCommand(remainingArgs);
+    }
+    else if (cmd == "linkedAccounts")
+    {
+        return HandleViewLinkedAccountsConsoleCommand(remainingArgs);
+    }
+    else if (cmd == "unlink")
+    {
+        return HandleUnlinkAccountConsoleCommand(remainingArgs);
+    }
+    else
+    {
+        LOG_ERROR("playerbots", "Unknown admin command: {}", cmd);
+        LOG_ERROR("playerbots", "Available commands: setKey, link, linkedAccounts, unlink");
+        return false;
+    }
+}
+
+bool PlayerbotMgr::HandleSetSecurityKeyConsoleCommand(char const* args)
+{
+    if (!args || !*args) {
+        LOG_ERROR("playerbots", "Usage: playerbots admin setKey <accountName> <securityKey>");
+        return false;
+    }
+
+    char* accountName = strtok((char*)args, " ");
+    char* key = strtok(nullptr, " ");
+
+    if (!accountName || !key) {
+        LOG_ERROR("playerbots", "Usage: playerbots admin setKey <accountName> <securityKey>");
+        return false;
+    }
+
+    // Get account ID using helper function
+    auto accountId = GetAccountIdByName(accountName);
+    if (!accountId) {
+        return false; // Error already logged by helper
+    }
+
+    // Hash the security key using helper function
+    std::string hashedKey = HashSecurityKey(key);
+
+    // Store the hashed key in the database
+    PlayerbotsDatabase.Execute(
+        "REPLACE INTO playerbots_account_keys (account_id, security_key) VALUES ({}, '{}')",
+        *accountId, hashedKey);
+
+    LOG_INFO("playerbots", "Security key set successfully for account '{}'.", accountName);
+    return true;
+}
+
+bool PlayerbotMgr::HandleLinkAccountConsoleCommand(char const* args)
+{
+    // Parse account names using helper function
+    auto [accountName1, accountName2] = ParseTwoAccountNames(args);
+    if (!accountName1 || !accountName2) {
+        LOG_ERROR("playerbots", "Usage: playerbots admin link <accountName1> <accountName2>");
+        return false;
+    }
+
+    // Get account IDs using helper function
+    auto accountId1 = GetAccountIdByName(*accountName1);
+    auto accountId2 = GetAccountIdByName(*accountName2);
+
+    if (!accountId1 || !accountId2) {
+        return false; // Errors already logged by helper
+    }
+
+    // Prevent self-linking
+    if (*accountId1 == *accountId2) {
+        LOG_ERROR("playerbots", "Cannot link an account to itself.");
+        return false;
+    }
+
+    // Check if accounts are already linked
+    QueryResult existingLink = PlayerbotsDatabase.Query(
+        "SELECT 1 FROM playerbots_account_links WHERE account_id = {} AND linked_account_id = {}",
+        *accountId1, *accountId2);
+
+    if (existingLink) {
+        LOG_INFO("playerbots", "Accounts '{}' and '{}' are already linked.", *accountName1, *accountName2);
+        return true;
+    }
+
+    // Create bidirectional link (no security key verification needed for console commands)
+    PlayerbotsDatabase.Execute(
+        "INSERT IGNORE INTO playerbots_account_links (account_id, linked_account_id) VALUES ({}, {})",
+        *accountId1, *accountId2);
+    PlayerbotsDatabase.Execute(
+        "INSERT IGNORE INTO playerbots_account_links (account_id, linked_account_id) VALUES ({}, {})",
+        *accountId2, *accountId1);
+
+    LOG_INFO("playerbots", "Accounts '{}' and '{}' linked successfully.", *accountName1, *accountName2);
+    return true;
+}
+
+bool PlayerbotMgr::HandleViewLinkedAccountsConsoleCommand(char const* args)
+{
+    if (!args || !*args) {
+        LOG_ERROR("playerbots", "Usage: playerbots admin linkedAccounts <accountName>");
+        return false;
+    }
+
+    char* accountName = strtok((char*)args, " ");
+    if (!accountName) {
+        LOG_ERROR("playerbots", "Usage: playerbots admin linkedAccounts <accountName>");
+        return false;
+    }
+
+    // Get account ID using helper function
+    auto accountId = GetAccountIdByName(accountName);
+    if (!accountId) {
+        return false; // Error already logged by helper
+    }
+
+    QueryResult linkResult = PlayerbotsDatabase.Query(
+        "SELECT linked_account_id FROM playerbots_account_links WHERE account_id = {}", *accountId);
+
+    if (!linkResult) {
+        LOG_INFO("playerbots", "Account '{}' has no linked accounts.", accountName);
+        return true;
+    }
+
+    LOG_INFO("playerbots", "Linked accounts for '{}':", accountName);
+    uint32 linkCount = 0;
+
+    do {
+        Field* linkFields = linkResult->Fetch();
+        uint32 linkedAccountId = linkFields[0].Get<uint32>();
+
+        // Use helper function to get account name
+        auto linkedAccountName = GetAccountNameById(linkedAccountId);
+        if (linkedAccountName) {
+            LOG_INFO("playerbots", "- {}", *linkedAccountName);
+        } else {
+            LOG_INFO("playerbots", "- Unknown account (ID: {})", linkedAccountId);
+        }
+        linkCount++;
+    } while (linkResult->NextRow());
+
+    LOG_INFO("playerbots", "Total linked accounts: {}", linkCount);
+    return true;
+}
+
+bool PlayerbotMgr::HandleUnlinkAccountConsoleCommand(char const* args)
+{
+    // Parse account names using helper function
+    auto [accountName1, accountName2] = ParseTwoAccountNames(args);
+    if (!accountName1 || !accountName2) {
+        LOG_ERROR("playerbots", "Usage: playerbots admin unlink <accountName1> <accountName2>");
+        return false;
+    }
+
+    // Get account IDs using helper function
+    auto accountId1 = GetAccountIdByName(*accountName1);
+    auto accountId2 = GetAccountIdByName(*accountName2);
+
+    if (!accountId1 || !accountId2) {
+        return false; // Errors already logged by helper
+    }
+
+    // Check if accounts are actually linked
+    QueryResult existingLink = PlayerbotsDatabase.Query(
+        "SELECT 1 FROM playerbots_account_links WHERE account_id = {} AND linked_account_id = {}",
+        *accountId1, *accountId2);
+
+    if (!existingLink) {
+        LOG_INFO("playerbots", "Accounts '{}' and '{}' are not linked.", *accountName1, *accountName2);
+        return true;
+    }
+
+    // Remove bidirectional link
+    PlayerbotsDatabase.Execute(
+        "DELETE FROM playerbots_account_links WHERE (account_id = {} AND linked_account_id = {}) OR (account_id = {} AND linked_account_id = {})",
+        *accountId1, *accountId2, *accountId2, *accountId1);
+
+    LOG_INFO("playerbots", "Accounts '{}' and '{}' unlinked successfully.", *accountName1, *accountName2);
+    return true;
 }

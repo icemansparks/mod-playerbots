@@ -88,6 +88,13 @@ public:
     void HandleViewLinkedAccountsCommand(Player* player);
     void HandleUnlinkAccountCommand(Player* player, const std::string& accountName);
 
+    // Static console-only command handlers (server console only, not accessible in-game)
+    static bool HandleConsoleCommand(ChatHandler* handler, char const* args);
+    static bool HandleSetSecurityKeyConsoleCommand(char const* args);
+    static bool HandleLinkAccountConsoleCommand(char const* args);
+    static bool HandleViewLinkedAccountsConsoleCommand(char const* args);
+    static bool HandleUnlinkAccountConsoleCommand(char const* args);
+
 protected:
     void OnBotLoginInternal(Player* const bot) override;
     void CheckTellErrors(uint32 elapsed);
