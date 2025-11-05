@@ -84,6 +84,44 @@ void IsleStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
     triggers.push_back(new TriggerNode("in vehicle", NextAction::array(0, new NextAction("glaive throw", ACTION_MOVE + 9.0f), nullptr)));
 }
 
+// Wintergrasp is siege-focused like IoC but with different objectives.
+// We keep initial behavior simple and vehicle-centric to be safe across cores:
+// - Try to enter a vehicle frequently once active
+// - Use generic vehicle abilities when in a vehicle
+// Generic PvP and non-combat strategies added by AiFactory handle target selection and fighting.
+void WintergraspStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
+{
+    // Travel to Wintergrasp during wartime (random bots)
+    triggers.push_back(new TriggerNode("often", NextAction::array(0, new NextAction("wg travel", ACTION_BG + 0.5f), nullptr)));
+
+    // Pre-wartime queuing so bots get teleported when war starts
+    triggers.push_back(new TriggerNode("often", NextAction::array(0, new NextAction("wg queue", ACTION_BG + 0.6f), nullptr)));
+
+    // On wartime, accept entry (teleport into WG) even if not in zone
+    triggers.push_back(new TriggerNode("often", NextAction::array(0, new NextAction("wg enter war", ACTION_BG + 0.7f), nullptr)));
+
+    // Proactively try to get into a vehicle when the battle is active
+    triggers.push_back(new TriggerNode("bg active", NextAction::array(0, new NextAction("enter vehicle", ACTION_MOVE + 7.0f), nullptr)));
+    triggers.push_back(new TriggerNode("often", NextAction::array(0, new NextAction("enter vehicle", ACTION_MOVE + 6.5f), nullptr)));
+
+    // Wintergrasp vehicle ability usage (authentic WG vehicle abilities)
+    // Catapult/Demolisher: Boulder attacks for siege warfare
+    triggers.push_back(new TriggerNode("in vehicle", NextAction::array(0, new NextAction("hurl boulder", ACTION_MOVE + 9.0f), nullptr)));
+
+    // Siege Engine: Primary cannon fire and ram attacks
+    triggers.push_back(new TriggerNode("in vehicle", NextAction::array(0, new NextAction("fire cannon", ACTION_MOVE + 8.9f), nullptr)));
+    triggers.push_back(new TriggerNode("in vehicle", NextAction::array(0, new NextAction("ram", ACTION_MOVE + 8.8f), nullptr)));
+
+    // All vehicles: Close-quarters ram when enemies are near
+    triggers.push_back(new TriggerNode("enemy is close", NextAction::array(0, new NextAction("ram", ACTION_MOVE + 9.1f), nullptr)));
+
+    // Objective and capture flow for Battlefield WG (zone-based)
+    // Drive the same BGTactics actions used in BGs but without requiring InBattleground()
+    triggers.push_back(new TriggerNode("often", NextAction::array(0, new NextAction("bg move to objective", ACTION_BG), nullptr)));
+    triggers.push_back(new TriggerNode("often", NextAction::array(0, new NextAction("bg check flag", ACTION_BG + 1), nullptr)));
+    triggers.push_back(new TriggerNode("dead", NextAction::array(0, new NextAction("bg reset objective force", ACTION_EMERGENCY), nullptr)));
+}
+
 void ArenaStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 {
     triggers.push_back(

@@ -6,6 +6,8 @@
 #include "AiFactory.h"
 
 #include "BattlegroundMgr.h"
+#include "BattlefieldMgr.h"
+#include "BattleGroundTactics.h"
 #include "DKAiObjectContext.h"
 #include "DruidAiObjectContext.h"
 #include "Engine.h"
@@ -732,6 +734,11 @@ void AiFactory::AddDefaultNonCombatStrategies(Player* player, PlayerbotAI* const
     {
         nonCombatEngine->ChangeStrategy(sPlayerbotAIConfig->nonCombatStrategies);
     }
+    // Ensure Wintergrasp strategy is available; triggers inside gate actual behavior.
+    // Always add for random bots so they can react to wartime and travel.
+    if (sRandomPlayerbotMgr->IsRandomBot(player) || (sBattlefieldMgr->GetBattlefieldToZoneId(WINTERGRASP_ZONE_ID) != nullptr))
+        nonCombatEngine->addStrategy("wintergrasp", false);
+
     // nonCombatEngine->addStrategy("battleground");
     // nonCombatEngine->addStrategy("warsong");
     // Battleground switch
@@ -748,8 +755,8 @@ void AiFactory::AddDefaultNonCombatStrategies(Player* player, PlayerbotAI* const
         if (bgType == BATTLEGROUND_RB)
             bgType = player->GetBattleground()->GetBgTypeID(true);
 
-        if ((bgType <= BATTLEGROUND_EY || bgType == BATTLEGROUND_IC) &&
-            !player->InArena())  // do not add for not supported bg or arena
+        bool addBgGeneric = (bgType <= BATTLEGROUND_EY || bgType == BATTLEGROUND_IC);
+        if (addBgGeneric && !player->InArena())
             nonCombatEngine->addStrategy("battleground", false);
 
         if (bgType == BATTLEGROUND_WS)

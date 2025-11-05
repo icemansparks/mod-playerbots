@@ -78,6 +78,16 @@ public:
     std::string const getName() override { return "isle"; }
 };
 
+class WintergraspStrategy : public Strategy
+{
+public:
+    WintergraspStrategy(PlayerbotAI* botAI) : Strategy(botAI){};
+
+    uint32 GetType() const override { return STRATEGY_TYPE_GENERIC; }
+    void InitTriggers(std::vector<TriggerNode*>& triggers) override;
+    std::string const getName() override { return "wintergrasp"; }
+};
+
 class ArenaStrategy : public Strategy
 {
 public:

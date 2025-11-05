@@ -19,6 +19,7 @@
 #include "ArenaTeamMgr.h"
 #include "Battleground.h"
 #include "BattlegroundMgr.h"
+#include "BattleGroundTactics.h"
 #include "CellImpl.h"
 #include "ChannelMgr.h"
 #include "DBCStores.h"
@@ -52,6 +53,8 @@
 #include "Unit.h"
 #include "UpdateTime.h"
 #include "World.h"
+#include "BattlefieldMgr.h"
+#include "Battlefield.h"
 
 struct GuidClassRaceInfo
 {
@@ -241,6 +244,10 @@ RandomPlayerbotMgr::RandomPlayerbotMgr() : PlayerbotHolder(), processTicks(0)
     BgCheckTimer = 0;
     LfgCheckTimer = 0;
     PlayersCheckTimer = 0;
+    WGCheckTimer = 0;
+
+    // Cache Wintergrasp team capacity to avoid repeated config lookups
+    wgTeamCapCache = sWorld->getIntConfig(CONFIG_WINTERGRASP_PLR_MAX);
 }
 
 RandomPlayerbotMgr::~RandomPlayerbotMgr() {}
@@ -456,6 +463,13 @@ void RandomPlayerbotMgr::UpdateAIInternal(uint32 elapsed, bool /*minimal*/)
     {
         if (time(nullptr) > (BgCheckTimer + 35))
             sRandomPlayerbotMgr->CheckBgQueue();
+    }
+
+    // Fill Wintergrasp during wartime when a real player is present, up to 40 per team
+    if (sPlayerbotAIConfig->randomBotJoinWG)
+    {
+        if (time(nullptr) > (WGCheckTimer + 5))
+            sRandomPlayerbotMgr->CheckWGFill();
     }
 
     if (sPlayerbotAIConfig->randomBotJoinLfg /* && !players.empty()*/)
@@ -1361,6 +1375,110 @@ void RandomPlayerbotMgr::CheckLfgQueue()
     LOG_DEBUG("playerbots", "LFG Queue check finished");
 }
 
+void RandomPlayerbotMgr::CheckWGFill()
+{
+    if (!WGCheckTimer)
+    {
+        WGCheckTimer = time(nullptr);
+        return;
+    }
+
+    WGCheckTimer = time(nullptr);
+
+    Battlefield* bf = sBattlefieldMgr->GetBattlefieldToZoneId(WINTERGRASP_ZONE_ID);
+    if (!bf)
+        return;
+
+    if (!bf->IsWarTime())
+        return;
+
+    // Count real players and bots currently in WG zone by team
+    uint32 realInWG[2] = {0, 0};
+    uint32 botInWG[2] = {0, 0};
+
+    for (Player* p : players)
+    {
+        if (!p || !p->IsInWorld())
+            continue;
+        if (p->GetZoneId() != WINTERGRASP_ZONE_ID)
+            continue;
+
+        TeamId t = p->GetTeamId();
+        if (sRandomPlayerbotMgr->IsRandomBot(p))
+            ++botInWG[t];
+        else
+            ++realInWG[t];
+    }
+
+    // Only fill if at least one real player is present, unless auto-join is enabled
+    if (!sPlayerbotAIConfig->randomBotAutoJoinWGQueue)
+    {
+        if (realInWG[TEAM_ALLIANCE] == 0 && realInWG[TEAM_HORDE] == 0)
+            return;
+    }
+
+    // Use cached team cap value to avoid repeated config lookups
+    const uint32 teamCap = wgTeamCapCache;
+
+    // WG level bracket (default 79-80)
+    uint32 minLevel = 79;
+    auto it = zone2LevelBracket.find(WINTERGRASP_ZONE_ID);
+    if (it != zone2LevelBracket.end())
+        minLevel = it->second.low;
+
+    // Build eligible bot lists per team
+    std::vector<Player*> eligible[2];
+    for (Player* p : players)
+    {
+        if (!p || !p->IsInWorld())
+            continue;
+        if (!sRandomPlayerbotMgr->IsRandomBot(p))
+            continue;
+        if (p->GetLevel() < minLevel)
+            continue;
+        if (p->InBattleground())
+            continue;
+        if (p->GetZoneId() == WINTERGRASP_ZONE_ID)
+            continue; // already in WG
+
+        eligible[p->GetTeamId()].push_back(p);
+    }
+
+    auto inviteTeam = [&](TeamId team)
+    {
+        uint32 current = realInWG[team] + botInWG[team];
+        if (current >= teamCap)
+            return;
+        uint32 need = teamCap - current;
+
+        uint32 invited = 0;
+        // randomize selection to spread load (use our global RandomEngine)
+        std::shuffle(eligible[team].begin(), eligible[team].end(), RandomEngine::Instance());
+        for (Player* b : eligible[team])
+        {
+            if (!b || !b->IsInWorld())
+                continue;
+
+            bf->PlayerAcceptInviteToWar(b);
+            ++invited;
+            if (invited >= need)
+                break;
+        }
+
+        if (invited)
+        {
+            LOG_INFO("playerbots", "WG fill: invited {} bots for {} (real={}, bots={}, cap={})", invited,
+                     team == TEAM_ALLIANCE ? "Alliance" : "Horde", realInWG[team], botInWG[team], teamCap);
+        }
+    };
+
+    LOG_DEBUG("playerbots", "WG fill check: A(real={}, bots={}) H(real={}, bots={})", realInWG[TEAM_ALLIANCE],
+              botInWG[TEAM_ALLIANCE], realInWG[TEAM_HORDE], botInWG[TEAM_HORDE]);
+
+    inviteTeam(TEAM_ALLIANCE);
+    inviteTeam(TEAM_HORDE);
+}
+
 void RandomPlayerbotMgr::CheckPlayers()
 {
     if (!PlayersCheckTimer || time(nullptr) > (PlayersCheckTimer + 60))
@@ -1405,6 +1523,11 @@ void RandomPlayerbotMgr::ScheduleChangeStrategy(uint32 bot, uint32 time)
                      sPlayerbotAIConfig->maxRandomBotChangeStrategyTime);
 
     SetEventValue(bot, "change_strategy", 1, time);
+}
+
+void RandomPlayerbotMgr::RefreshWGTeamCapCache()
+{
+    wgTeamCapCache = sWorld->getIntConfig(CONFIG_WINTERGRASP_PLR_MAX);
 }
 
 bool RandomPlayerbotMgr::ProcessBot(uint32 bot)
@@ -1862,7 +1985,7 @@ void RandomPlayerbotMgr::PrepareZone2LevelBracket()
     zone2LevelBracket[2817] = {77, 80};  // Crystalsong Forest
     zone2LevelBracket[3537] = {68, 75};  // Borean Tundra
     zone2LevelBracket[3711] = {75, 80};  // Sholazar Basin
-    zone2LevelBracket[4197] = {79, 80};  // Wintergrasp
+    zone2LevelBracket[WINTERGRASP_ZONE_ID] = {79, 80};  // Wintergrasp
 
     // Override with values from config
     for (auto const& [zoneId, bracketPair] : sPlayerbotAIConfig->zoneBrackets)

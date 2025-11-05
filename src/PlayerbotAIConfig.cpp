@@ -5,6 +5,7 @@
 
 #include "PlayerbotAIConfig.h"
 #include <iostream>
+#include "BattleGroundTactics.h"
 #include "Config.h"
 #include "NewRpgInfo.h"
 #include "PlayerbotDungeonSuggestionMgr.h"
@@ -317,6 +318,10 @@ bool PlayerbotAIConfig::Initialize()
 
     randomBotJoinBG = sConfigMgr->GetOption<bool>("AiPlayerbot.RandomBotJoinBG", true);
     randomBotAutoJoinBG = sConfigMgr->GetOption<bool>("AiPlayerbot.RandomBotAutoJoinBG", false);
+    // Wintergrasp master toggle (similar to RandomBotJoinBG)
+    randomBotJoinWG = sConfigMgr->GetOption<bool>("AiPlayerbot.RandomBotJoinWG", true);
+    // Wintergrasp (Battlefield) queue participation
+    randomBotAutoJoinWGQueue = sConfigMgr->GetOption<bool>("AiPlayerbot.RandomBotAutoJoinWGQueue", false);
 
     randomBotAutoJoinArenaBracket = sConfigMgr->GetOption<int32>("AiPlayerbot.RandomBotAutoJoinArenaBracket", 7);
 
@@ -366,7 +371,7 @@ bool PlayerbotAIConfig::Initialize()
         // The Burning Crusade - Zones
         3483, 3518, 3519, 3520, 3521, 3522, 3523, 4080,
         // Wrath of the Lich King - Zones
-        65, 66, 67, 210, 394, 495, 2817, 3537, 3711, 4197
+        65, 66, 67, 210, 394, 495, 2817, 3537, 3711, WINTERGRASP_ZONE_ID
     };
 
     for (uint32 zoneId : zoneIds)
@@ -819,9 +824,12 @@ void PlayerbotAIConfig::loadWorldBuff()
         std::string token;
         while (std::getline(metaStream, token, ','))
         {
-            try {
+            try
+            {
                 ids.push_back(static_cast<uint32>(std::stoi(token)));
-            } catch (...) {
+            }
+            catch (...)
+            {
                 LOG_ERROR("playerbots", "Invalid meta token in [{}]", entry);
                 break;
             }
@@ -836,11 +844,14 @@ void PlayerbotAIConfig::loadWorldBuff()
         std::istringstream spellStream(spellPart);
         while (std::getline(spellStream, token, ','))
         {
-            try {
+            try
+            {
                 uint32 spellId = static_cast<uint32>(std::stoi(token));
                 worldBuff wb = { spellId, ids[0], ids[1], ids[2], ids[3], ids[4] };
                 worldBuffs.push_back(wb);
-            } catch (...) {
+            }
+            catch (...)
+            {
                 LOG_ERROR("playerbots", "Invalid spell ID in [{}]", entry);
             }
         }

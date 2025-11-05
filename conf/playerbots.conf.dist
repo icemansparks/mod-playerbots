@@ -630,7 +630,7 @@ AiPlayerbot.RandomBotHordeRatio = 50
 AiPlayerbot.DisableDeathKnightLogin = 0
 
 # Enable simulated expansion limitation for talents and glyphs
-# If enabled, limits talent trees to 5 rows plus the middle talent of the 6th row for bots until level 61 
+# If enabled, limits talent trees to 5 rows plus the middle talent of the 6th row for bots until level 61
 # and 7 rows plus the middle talent of the 8th row for bots from level 61 until level 71
 # Default: 0 (disabled)
 AiPlayerbot.LimitTalentsExpansion = 0
@@ -1049,6 +1049,7 @@ AiPlayerbot.ZoneBracket.3537 = 68,75
 AiPlayerbot.ZoneBracket.3711 = 75,80
 AiPlayerbot.ZoneBracket.4197 = 79,80
 
+
 #
 #
 #
@@ -1113,6 +1114,20 @@ AiPlayerbot.RandomBotJoinBG = 1
 
 # Enable auto-joining of battlegrounds - have bots start battlegrounds and arenas on their own
 AiPlayerbot.RandomBotAutoJoinBG = 0
+
+# Allow random bots to participate in Wintergrasp (Battlefield) and fill the teams
+# Similar to AiPlayerbot.RandomBotJoinBG for battlegrounds.
+# Default: 1 (enabled)
+AiPlayerbot.RandomBotJoinWG = 1
+
+# Random bots may auto-queue and join Wintergrasp even when no real players participate.
+# When disabled, bots only join when real players are already in the battle (like other BGs).
+# Default: 0 (disabled)
+AiPlayerbot.RandomBotAutoJoinWGQueue = 0
+# Note: AiPlayerbot.RandomBotAutoJoinWGQueue takes effect only when
+# AiPlayerbot.RandomBotJoinWG = 1. When both are enabled, bots may
+# queue and fight each other autonomously. When only RandomBotJoinWG is enabled, bots will
+# only fill when real players have joined the battle.
 
 # Required Configuration for RandomBotAutoJoinBG
 #
