@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2016+ AzerothCore <www.azerothcore.org>, released under GNU GPL v2 license, you may redistribute it
- * and/or modify it under version 2 of the License, or (at your option), any later version.
+ * Copyright (C) 2016+ AzerothCore <www.azerothcore.org>, released under GNU AGPL v3 license, you may redistribute it
+ * and/or modify it under version 3 of the License, or (at your option), any later version.
  */
 
 #include "GuildManagementActions.h"
@@ -193,7 +193,7 @@ bool GuildManageNearbyAction::Execute(Event event)
         if (guild->GetMemberSize() > 1000)
             return false;
 
-        if ( (guild->GetRankRights(botMember->GetRankId()) & GR_RIGHT_INVITE) == 0)
+        if ((guild->GetRankRights(botMember->GetRankId()) & GR_RIGHT_INVITE) == 0)
             continue;
 
         if (player->GetGuildIdInvited())

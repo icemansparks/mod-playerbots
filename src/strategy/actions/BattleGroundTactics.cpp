@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2016+ AzerothCore <www.azerothcore.org>, released under GNU GPL v2 license, you may redistribute it
- * and/or modify it under version 2 of the License, or (at your option), any later version.
+ * Copyright (C) 2016+ AzerothCore <www.azerothcore.org>, released under GNU AGPL v3 license, you may redistribute it
+ * and/or modify it under version 3 of the License, or (at your option), any later version.
  */
 
 #include "BattleGroundTactics.h"
@@ -1894,13 +1894,13 @@ bool BGTactics::selectObjective(bool reset)
             bool isDefender = role < defendersProhab;
             bool isAdvanced = !isDefender && role > 8;
 
-            const auto& attackObjectives =
+            auto const& attackObjectives =
                 (team == TEAM_HORDE) ? AV_AttackObjectives_Horde : AV_AttackObjectives_Alliance;
-            const auto& defendObjectives =
+            auto const& defendObjectives =
                 (team == TEAM_HORDE) ? AV_DefendObjectives_Horde : AV_DefendObjectives_Alliance;
 
             uint32 destroyedNodes = 0;
-            for (const auto& [nodeId, _] : defendObjectives)
+            for (auto const& [nodeId, _] : defendObjectives)
                 if (av->GetAVNodeInfo(nodeId).State == POINT_DESTROYED)
                     destroyedNodes++;
 
@@ -2000,7 +2000,7 @@ bool BGTactics::selectObjective(bool reset)
                 std::vector<GameObject*> contestedObjectives;
                 std::vector<GameObject*> availableObjectives;
 
-                for (const auto& [nodeId, goId] : defendObjectives)
+                for (auto const& [nodeId, goId] : defendObjectives)
                 {
                     const BG_AV_NodeInfo& node = av->GetAVNodeInfo(nodeId);
                     if (node.State == POINT_DESTROYED)
@@ -2026,7 +2026,7 @@ bool BGTactics::selectObjective(bool reset)
             if (!BgObjective)
             {
                 uint32 towersDown = 0;
-                for (const auto& [nodeId, _] : attackObjectives)
+                for (auto const& [nodeId, _] : attackObjectives)
                     if (av->GetAVNodeInfo(nodeId).State == POINT_DESTROYED)
                         towersDown++;
 
@@ -2053,7 +2053,7 @@ bool BGTactics::selectObjective(bool reset)
             {
                 std::vector<GameObject*> candidates;
 
-                for (const auto& [nodeId, goId] : attackObjectives)
+                for (auto const& [nodeId, goId] : attackObjectives)
                 {
                     const BG_AV_NodeInfo& node = av->GetAVNodeInfo(nodeId);
                     GameObject* go = bg->GetBGObject(goId);
@@ -2105,13 +2105,13 @@ bool BGTactics::selectObjective(bool reset)
                 Position objPos = BgObjective->GetPosition();
 
                 Optional<uint8> linkedNodeId;
-                for (const auto& [nodeId, goId] : attackObjectives)
+                for (auto const& [nodeId, goId] : attackObjectives)
                     if (bg->GetBGObject(goId) == BgObjective)
                         linkedNodeId = nodeId;
 
                 if (!linkedNodeId)
                 {
-                    for (const auto& [nodeId, goId] : defendObjectives)
+                    for (auto const& [nodeId, goId] : defendObjectives)
                         if (bg->GetBGObject(goId) == BgObjective)
                             linkedNodeId = nodeId;
                 }
@@ -2543,7 +2543,7 @@ bool BGTactics::selectObjective(bool reset)
                 float bestDist = FLT_MAX;
                 uint32 bestTrigger = 0;
 
-                for (const auto& [nodeId, _, areaTrigger] : EY_AttackObjectives)
+                for (auto const& [nodeId, _, areaTrigger] : EY_AttackObjectives)
                 {
                     if (!IsOwned(nodeId))
                         continue;
@@ -2610,7 +2610,7 @@ bool BGTactics::selectObjective(bool reset)
             // --- PRIORITY 2: Nearby unowned contested node ---
             if (!foundObjective)
             {
-                for (const auto& [nodeId, _, __] : EY_AttackObjectives)
+                for (auto const& [nodeId, _, __] : EY_AttackObjectives)
                 {
                     if (IsOwned(nodeId))
                         continue;
@@ -2711,7 +2711,7 @@ bool BGTactics::selectObjective(bool reset)
             if (!foundObjective && strategy == EY_STRATEGY_FLAG_FOCUS)
             {
                 bool ownsAny = false;
-                for (const auto& [nodeId, _, __] : EY_AttackObjectives)
+                for (auto const& [nodeId, _, __] : EY_AttackObjectives)
                 {
                     if (IsOwned(nodeId))
                     {
@@ -2739,7 +2739,7 @@ bool BGTactics::selectObjective(bool reset)
                     float bestDist = FLT_MAX;
                     Optional<uint32> bestNode;
 
-                    for (const auto& [nodeId, _, __] : EY_AttackObjectives)
+                    for (auto const& [nodeId, _, __] : EY_AttackObjectives)
                     {
                         if (IsOwned(nodeId))
                             continue;
@@ -2974,7 +2974,7 @@ bool BGTactics::selectObjective(bool reset)
                     uint32 len = end(IC_AttackObjectives) - begin(IC_AttackObjectives);
                     for (uint32 i = 0; i < len; i++)
                     {
-                        const auto& objective =
+                        auto const& objective =
                             IC_AttackObjectives[(i + role) %
                                                 len];  // use role to determine which objective checked first
                         if (isleOfConquestBG->GetICNodePoint(objective.first).nodeState != NODE_STATE_CONTROLLED_H)
@@ -3126,7 +3126,7 @@ bool BGTactics::selectObjective(bool reset)
                     uint32 len = end(IC_AttackObjectives) - begin(IC_AttackObjectives);
                     for (uint32 i = 0; i < len; i++)
                     {
-                        const auto& objective =
+                        auto const& objective =
                             IC_AttackObjectives[(i + role) %
                                                 len];  // use role to determine which objective checked first
                         if (isleOfConquestBG->GetICNodePoint(objective.first).nodeState != NODE_STATE_CONTROLLED_H)
@@ -4289,9 +4289,15 @@ bool ArenaTactics::moveToCenter(Battleground* bg)
             {
                 // they like to hang around at the tip of the pipes doing nothing, so we just teleport them down
                 if (bot->GetDistance(1333.07f, 817.18f, 13.35f) < 4)
+                {
+                    bot->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_TELEPORTED | AURA_INTERRUPT_FLAG_CHANGE_MAP);
                     bot->TeleportTo(bg->GetMapId(), 1330.96f, 816.75f, 3.2f, bot->GetOrientation());
+                }
                 if (bot->GetDistance(1250.13f, 764.79f, 13.34f) < 4)
+                {
+                    bot->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_TELEPORTED | AURA_INTERRUPT_FLAG_CHANGE_MAP);
                     bot->TeleportTo(bg->GetMapId(), 1252.19f, 765.41f, 3.2f, bot->GetOrientation());
+                }
             }
             break;
         case BATTLEGROUND_RV:
