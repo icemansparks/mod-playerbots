@@ -50,6 +50,8 @@ class CastAquaticFormAction : public CastBuffSpellAction
 {
 public:
     CastAquaticFormAction(PlayerbotAI* botAI) : CastBuffSpellAction(botAI, "aquatic form") {}
+
+    bool isUseful() override;
 };
 
 class CastTravelFormAction : public CastBuffSpellAction
