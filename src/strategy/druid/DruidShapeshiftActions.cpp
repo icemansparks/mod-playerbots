@@ -64,6 +64,12 @@ bool CastAquaticFormAction::isUseful()
         return false;
     }
 
+    // Check mana requirements first - if we can't cast, allow fallback to swim to surface
+    if (!CastSpellAction::isPossible())
+    {
+        return false; // Will fall back to generic swim to surface action
+    }
+
     // Check if in water or underwater using bot's position directly
     int8 liquidState = bot->GetLiquidData().Status;
     bool inWater = liquidState == LIQUID_MAP_IN_WATER || liquidState == LIQUID_MAP_UNDER_WATER;

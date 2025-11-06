@@ -2999,3 +2999,52 @@ bool MoveAwayFromPlayerWithDebuffAction::isPossible()
 {
     return bot->CanFreeMove();
 }
+
+bool SwimToSurfaceAction::isUseful()
+{
+    // Only useful when bot is underwater (diving), not when swimming on surface
+    int8 liquidState = bot->GetLiquidData().Status;
+    if (liquidState != LIQUID_MAP_UNDER_WATER)
+    {
+        return false; // Not underwater - either on surface (LIQUID_MAP_IN_WATER) or on land
+    }
+
+    // Check breath timer - only swim to surface if breath is getting low
+    uint32 breathTimer = bot->GetUInt32Value(PLAYER_BYTES_3) & 0xFF;
+    return breathTimer <= 60; // Same threshold as drowning trigger
+}
+
+bool SwimToSurfaceAction::Execute(Event event)
+{
+    // Double-check we're still underwater (action might be called when already at surface)
+    int8 liquidState = bot->GetLiquidData().Status;
+    if (liquidState != LIQUID_MAP_UNDER_WATER)
+    {
+        // Already at surface or on land - action completed
+        return true;
+    }
+
+    // Get current position
+    float x = bot->GetPositionX();
+    float y = bot->GetPositionY();
+    float z = bot->GetPositionZ();
+
+    // Try to find the actual liquid surface level first
+    float groundZ = z;
+    float liquidLevel = VMAP_INVALID_HEIGHT;
+    float surfaceZ = z + 15.0f; // Conservative fallback - move up 15 yards
+
+    // Try to get proper water surface level using collision system
+    if (bot->GetMap()->GetWaterOrGroundLevel(bot->GetPhaseShift(), x, y, z + 25.0f, &groundZ, true, &liquidLevel))
+    {
+        if (liquidLevel != VMAP_INVALID_HEIGHT && liquidLevel > z)
+        {
+            // Found actual water surface, target slightly above it to ensure we reach surface swimming state
+            surfaceZ = liquidLevel + 1.5f;
+        }
+    }
+
+    // Execute conservative movement to surface
+    // Use smaller increments so we can detect when we reach LIQUID_MAP_IN_WATER state
+    return MoveTo(bot->GetMapId(), x, y, surfaceZ, false, false, false, false, MovementPriority::MOVEMENT_EMERGENCY);
+}

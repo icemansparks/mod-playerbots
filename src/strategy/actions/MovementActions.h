@@ -323,4 +323,13 @@ private:
     bool alive;
 };
 
+class SwimToSurfaceAction : public MovementAction
+{
+public:
+    SwimToSurfaceAction(PlayerbotAI* botAI) : MovementAction(botAI, "swim to surface") {}
+
+    bool Execute(Event event) override;
+    bool isUseful() override;
+};
+
 #endif

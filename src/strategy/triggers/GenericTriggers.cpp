@@ -587,11 +587,13 @@ bool IsSwimmingTrigger::IsActive() { return AI_VALUE2(bool, "swimming", "self ta
 
 bool IsDrowningTrigger::IsActive()
 {
-    // Check if bot is underwater (not just swimming)
+    // Check if bot is underwater (diving) - not just swimming on surface
+    // LIQUID_MAP_UNDER_WATER = diving/underwater (breath timer active)
+    // LIQUID_MAP_IN_WATER = swimming on surface (no drowning risk)
     int8 botInLiquidState = bot->GetLiquidData().Status;
     if (botInLiquidState != LIQUID_MAP_UNDER_WATER)
     {
-        return false;
+        return false; // Either on surface swimming or on land - no drowning risk
     }
 
     // Check breath timer - trigger when breath is getting low but before drowning starts

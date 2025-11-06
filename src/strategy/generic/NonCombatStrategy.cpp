@@ -9,6 +9,9 @@
 
 void NonCombatStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 {
+    // Universal drowning prevention for all classes (fallback when class-specific solutions fail)
+    triggers.push_back(new TriggerNode("drowning", NextAction::array(0, new NextAction("swim to surface", ACTION_EMERGENCY), nullptr)));
+
     triggers.push_back(new TriggerNode("random", NextAction::array(0, new NextAction("clean quest log", 1.0f), nullptr)));
     triggers.push_back(new TriggerNode("timer", NextAction::array(0, new NextAction("check mount state", 1.0f),
         // new NextAction("check values", 1.0f),
