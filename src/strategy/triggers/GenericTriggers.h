@@ -762,8 +762,6 @@ public:
     bool IsActive() override;
 };
 
-
-
 class HasNearestAddsTrigger : public Trigger
 {
 public:
