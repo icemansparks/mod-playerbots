@@ -61,36 +61,36 @@ private:
     {
         return new ActionNode("regrowth on party",
                               /*P*/ NextAction::array(0, new NextAction("caster form"), nullptr),
-                              /*A*/ NULL,
-                              /*C*/ NULL);
+                              /*A*/ nullptr,
+                              /*C*/ nullptr);
     }
     static ActionNode* rejuvenation_on_party([[maybe_unused]] PlayerbotAI* botAI)
     {
         return new ActionNode("rejuvenation on party",
                               /*P*/ NextAction::array(0, new NextAction("caster form"), nullptr),
-                              /*A*/ NULL,
-                              /*C*/ NULL);
+                              /*A*/ nullptr,
+                              /*C*/ nullptr);
     }
     static ActionNode* remove_curse_on_party([[maybe_unused]] PlayerbotAI* botAI)
     {
         return new ActionNode("remove curse on party",
                               /*P*/ NextAction::array(0, new NextAction("caster form"), nullptr),
-                              /*A*/ NULL,
-                              /*C*/ NULL);
+                              /*A*/ nullptr,
+                              /*C*/ nullptr);
     }
     static ActionNode* abolish_poison_on_party([[maybe_unused]] PlayerbotAI* botAI)
     {
         return new ActionNode("abolish poison on party",
                               /*P*/ NextAction::array(0, new NextAction("caster form"), nullptr),
-                              /*A*/ NULL,
-                              /*C*/ NULL);
+                              /*A*/ nullptr,
+                              /*C*/ nullptr);
     }
     static ActionNode* revive([[maybe_unused]] PlayerbotAI* botAI)
     {
         return new ActionNode("revive",
                               /*P*/ NextAction::array(0, new NextAction("caster form"), nullptr),
-                              /*A*/ NULL,
-                              /*C*/ NULL);
+                              /*A*/ nullptr,
+                              /*C*/ nullptr);
     }
     // static ActionNode* innervate([[maybe_unused]] PlayerbotAI* botAI)
     // {
@@ -119,6 +119,16 @@ void GenericDruidNonCombatStrategy::InitTriggers(std::vector<TriggerNode*>& trig
     // triggers.push_back(new TriggerNode("low mana", NextAction::array(0, new NextAction("innervate", ACTION_EMERGENCY
     // + 5), nullptr))); triggers.push_back(new TriggerNode("swimming", NextAction::array(0, new NextAction("aquatic
     // form", 1.0f), nullptr)));
+
+    // Aquatic form management
+    // High priority: Breath-based drowning prevention (triggers before damage)
+    triggers.push_back(new TriggerNode("drowning", NextAction::array(0, new NextAction("aquatic form", ACTION_EMERGENCY + 1), nullptr)));
+
+    // Medium priority: Swimming convenience (for non-combat situations primarily)
+    triggers.push_back(new TriggerNode("swimming", NextAction::array(0, new NextAction("aquatic form", 2.0f), nullptr)));
+
+    // Low priority: Switch to caster form during combat when breath is safe and mana is good
+    triggers.push_back(new TriggerNode("aquatic form to caster", NextAction::array(0, new NextAction("caster form", 0.5f), nullptr)));
 
     triggers.push_back(new TriggerNode("often", NextAction::array(0, new NextAction("apply oil", 1.0f), nullptr)));
 
@@ -154,29 +164,6 @@ void GenericDruidNonCombatStrategy::InitTriggers(std::vector<TriggerNode*>& trig
                         NextAction::array(0, new NextAction("remove curse on party", ACTION_DISPEL + 7), nullptr)));
     triggers.push_back(
         new TriggerNode("new pet", NextAction::array(0, new NextAction("set pet stance", 60.0f), nullptr)));
-
-    triggers.push_back(new TriggerNode("party member critical health", NextAction::array(0,
-                       new NextAction("wild growth on party", ACTION_MEDIUM_HEAL + 7),
-                       new NextAction("regrowth on party", ACTION_MEDIUM_HEAL + 6),
-                       new NextAction("rejuvenation on party", ACTION_MEDIUM_HEAL + 5),
-                       nullptr)));
-    triggers.push_back(new TriggerNode("party member low health", NextAction::array(0,
-                       new NextAction("wild growth on party", ACTION_MEDIUM_HEAL + 5),
-                       new NextAction("regrowth on party", ACTION_MEDIUM_HEAL + 4),
-                       new NextAction("rejuvenation on party", ACTION_MEDIUM_HEAL + 3),
-                       nullptr)));
-    triggers.push_back(new TriggerNode("party member medium health", NextAction::array(0,
-                       new NextAction("wild growth on party", ACTION_MEDIUM_HEAL + 3),
-                       new NextAction("regrowth on party", ACTION_MEDIUM_HEAL + 2),
-                       new NextAction("rejuvenation on party", ACTION_MEDIUM_HEAL + 1),
-                       nullptr)));
-    triggers.push_back(new TriggerNode("party member almost full health", NextAction::array(0,
-                       new NextAction("wild growth on party", ACTION_LIGHT_HEAL + 3),
-                       new NextAction("rejuvenation on party", ACTION_LIGHT_HEAL + 2),
-                       nullptr)));
-    triggers.push_back(new TriggerNode("party member remove curse", NextAction::array(0,
-                       new NextAction("remove curse on party", ACTION_DISPEL + 7),
-                       nullptr)));
 
     int specTab = AiFactory::GetPlayerSpecTab(botAI->GetBot());
     if (specTab == 0 || specTab == 2) // Balance or Restoration
