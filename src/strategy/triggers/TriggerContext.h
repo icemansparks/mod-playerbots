@@ -137,6 +137,7 @@ public:
         creators["far from loot target"] = &TriggerContext::far_from_loot_target;
         creators["can loot"] = &TriggerContext::can_loot;
         creators["swimming"] = &TriggerContext::swimming;
+        creators["drowning"] = &TriggerContext::drowning;
         creators["target changed"] = &TriggerContext::target_changed;
 
         creators["critical aoe heal"] = &TriggerContext::critical_aoe_heal;
@@ -269,6 +270,7 @@ private:
     }
     static Trigger* target_changed(PlayerbotAI* botAI) { return new TargetChangedTrigger(botAI); }
     static Trigger* swimming(PlayerbotAI* botAI) { return new IsSwimmingTrigger(botAI); }
+    static Trigger* drowning(PlayerbotAI* botAI) { return new IsDrowningTrigger(botAI); }
     static Trigger* no_possible_targets(PlayerbotAI* botAI) { return new NoPossibleTargetsTrigger(botAI); }
     static Trigger* possible_adds(PlayerbotAI* botAI) { return new PossibleAddsTrigger(botAI); }
     static Trigger* can_loot(PlayerbotAI* botAI) { return new CanLootTrigger(botAI); }
