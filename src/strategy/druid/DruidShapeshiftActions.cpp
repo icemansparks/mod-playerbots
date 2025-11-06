@@ -5,6 +5,7 @@
 
 #include "DruidShapeshiftActions.h"
 
+#include "MovementActions.h"
 #include "Playerbots.h"
 
 bool CastBearFormAction::isPossible()
@@ -92,8 +93,8 @@ bool CastAquaticFormAction::isUseful()
         // If in combat, only use for emergencies (breath-based only)
         uint32 breathTimer = bot->GetUInt32Value(PLAYER_BYTES_3) & 0xFF;
 
-        // Emergency: Use only if breath is critically low (< 30 sec)
-        return breathTimer <= 30;
+        // Emergency: Use only if breath is critically low
+        return breathTimer <= DROWNING_EMERGENCY_THRESHOLD_SECONDS;
     }
 }
 

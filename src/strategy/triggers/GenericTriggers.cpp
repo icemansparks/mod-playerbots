@@ -8,6 +8,7 @@
 #include <string>
 
 #include "BattlegroundWS.h"
+#include "MovementActions.h"
 #include "CreatureAI.h"
 #include "GameTime.h"
 #include "ItemVisitors.h"
@@ -600,9 +601,9 @@ bool IsDrowningTrigger::IsActive()
     // Breath timer starts at 180 seconds (3 minutes) and counts down
     uint32 breathTimer = bot->GetUInt32Value(PLAYER_BYTES_3) & 0xFF; // Get current breath value
 
-    // Trigger when breath drops below 60 seconds (1/3 remaining)
+    // Trigger when breath drops below threshold (1/3 remaining)
     // This gives plenty of time for action before actual drowning damage starts
-    if (breathTimer <= 60)
+    if (breathTimer <= DROWNING_BREATH_THRESHOLD_SECONDS)
     {
         // For druids: Don't trigger if already in aquatic form
         if (bot->getClass() == CLASS_DRUID && botAI->HasAura("aquatic form", bot))

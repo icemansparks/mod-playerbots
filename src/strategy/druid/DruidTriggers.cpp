@@ -4,6 +4,7 @@
  */
 
 #include "DruidTriggers.h"
+#include "MovementActions.h"
 #include "Player.h"
 #include "Playerbots.h"
 
@@ -87,12 +88,12 @@ bool AquaticFormToCasterTrigger::IsActive()
 
     // Self-preservation is more important - don't switch if drowning risk
     uint32 breathTimer = bot->GetUInt32Value(PLAYER_BYTES_3) & 0xFF;
-    if (breathTimer <= 60)
+    if (breathTimer <= DROWNING_BREATH_THRESHOLD_SECONDS)
     {
         return false; // Stay in aquatic form to prevent drowning
     }
 
     // Safe to switch for combat effectiveness if we have decent mana
     uint8 manaPercent = AI_VALUE2(uint8, "mana", "self target");
-    return manaPercent > 50; // Switch to caster for combat, but only with good mana
+    return manaPercent > DRUID_MANA_THRESHOLD_FOR_FORM_SWITCH;
 }

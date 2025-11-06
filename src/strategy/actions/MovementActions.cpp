@@ -3011,7 +3011,7 @@ bool SwimToSurfaceAction::isUseful()
 
     // Check breath timer - only swim to surface if breath is getting low
     uint32 breathTimer = bot->GetUInt32Value(PLAYER_BYTES_3) & 0xFF;
-    return breathTimer <= 60; // Same threshold as drowning trigger
+    return breathTimer <= DROWNING_BREATH_THRESHOLD_SECONDS;
 }
 
 bool SwimToSurfaceAction::Execute(Event event)
@@ -3032,15 +3032,15 @@ bool SwimToSurfaceAction::Execute(Event event)
     // Try to find the actual liquid surface level first
     float groundZ = z;
     float liquidLevel = VMAP_INVALID_HEIGHT;
-    float surfaceZ = z + 15.0f; // Conservative fallback - move up 15 yards
+    float surfaceZ = z + CONSERVATIVE_SURFACE_FALLBACK_YARDS; // Conservative fallback
 
     // Try to get proper water surface level using collision system
-    if (bot->GetMap()->GetWaterOrGroundLevel(bot->GetPhaseShift(), x, y, z + 25.0f, &groundZ, true, &liquidLevel))
+    if (bot->GetMap()->GetWaterOrGroundLevel(bot->GetPhaseShift(), x, y, z + SURFACE_SEARCH_HEIGHT_YARDS, &groundZ, true, &liquidLevel))
     {
         if (liquidLevel != VMAP_INVALID_HEIGHT && liquidLevel > z)
         {
             // Found actual water surface, target slightly above it to ensure we reach surface swimming state
-            surfaceZ = liquidLevel + 1.5f;
+            surfaceZ = liquidLevel + SURFACE_TARGET_OFFSET_YARDS;
         }
     }
 

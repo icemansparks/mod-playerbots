@@ -22,6 +22,14 @@ class Position;
 #define ANGLE_90_DEG M_PI_2
 #define ANGLE_120_DEG (2.f * static_cast<float>(M_PI) / 3.f)
 
+// Drowning prevention constants
+#define DROWNING_BREATH_THRESHOLD_SECONDS 60
+#define DROWNING_EMERGENCY_THRESHOLD_SECONDS 30
+#define DRUID_MANA_THRESHOLD_FOR_FORM_SWITCH 50
+#define CONSERVATIVE_SURFACE_FALLBACK_YARDS 15.0f
+#define SURFACE_SEARCH_HEIGHT_YARDS 25.0f
+#define SURFACE_TARGET_OFFSET_YARDS 1.5f
+
 class MovementAction : public Action
 {
 public:
