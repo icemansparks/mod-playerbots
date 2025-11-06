@@ -3031,13 +3031,13 @@ bool SwimToSurfaceAction::Execute(Event event)
 
     // Try to find the actual liquid surface level first
     float groundZ = z;
-    float liquidLevel = VMAP_INVALID_HEIGHT;
+    float liquidLevel = VMAP_INVALID_HEIGHT_VALUE;
     float surfaceZ = z + CONSERVATIVE_SURFACE_FALLBACK_YARDS; // Conservative fallback
 
     // Try to get proper water surface level using collision system
     if (bot->GetMap()->GetWaterOrGroundLevel(bot->GetPhaseShift(), x, y, z + SURFACE_SEARCH_HEIGHT_YARDS, &groundZ, true, &liquidLevel))
     {
-        if (liquidLevel != VMAP_INVALID_HEIGHT && liquidLevel > z)
+        if (liquidLevel != VMAP_INVALID_HEIGHT_VALUE && liquidLevel > z)
         {
             // Found actual water surface, target slightly above it to ensure we reach surface swimming state
             surfaceZ = liquidLevel + SURFACE_TARGET_OFFSET_YARDS;
