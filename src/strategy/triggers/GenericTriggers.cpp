@@ -585,6 +585,36 @@ bool NotDpsAoeTargetActiveTrigger::IsActive()
 
 bool IsSwimmingTrigger::IsActive() { return AI_VALUE2(bool, "swimming", "self target"); }
 
+bool IsDrowningTrigger::IsActive()
+{
+    // Check if bot is underwater (not just swimming)
+    int8 botInLiquidState = bot->GetLiquidData().Status;
+    if (botInLiquidState != LIQUID_MAP_UNDER_WATER)
+    {
+        return false;
+    }
+
+    // Check breath timer - trigger when breath is getting low but before drowning starts
+    // Breath timer starts at 180 seconds (3 minutes) and counts down
+    uint32 breathTimer = bot->GetUInt32Value(PLAYER_BYTES_3) & 0xFF; // Get current breath value
+
+    // Trigger when breath drops below 60 seconds (1/3 remaining)
+    // This gives plenty of time for action before actual drowning damage starts
+    if (breathTimer <= 60)
+    {
+        // For druids: Don't trigger if already in aquatic form
+        if (bot->getClass() == CLASS_DRUID && botAI->HasAura("aquatic form", bot))
+        {
+            return false;
+        }
+
+        // For all classes (including druids not in aquatic form): trigger drowning prevention
+        return true;
+    }
+
+    return false;
+}
+
 bool HasNearestAddsTrigger::IsActive()
 {
     GuidVector targets = AI_VALUE(GuidVector, "nearest adds");

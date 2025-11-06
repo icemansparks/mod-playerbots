@@ -754,6 +754,16 @@ public:
     bool IsActive() override;
 };
 
+class IsDrowningTrigger : public Trigger
+{
+public:
+    IsDrowningTrigger(PlayerbotAI* botAI) : Trigger(botAI, "drowning") {}
+
+    bool IsActive() override;
+};
+
+
+
 class HasNearestAddsTrigger : public Trigger
 {
 public:
