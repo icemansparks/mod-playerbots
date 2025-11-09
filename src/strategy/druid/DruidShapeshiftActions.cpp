@@ -57,6 +57,11 @@ bool CastCancelTreeFormAction::Execute(Event event)
     return true;
 }
 
+bool CastAquaticFormAction::isPossible()
+{
+    return CastBuffSpellAction::isPossible();
+}
+
 bool CastAquaticFormAction::isUseful()
 {
     // Don't use if already in aquatic form
@@ -65,37 +70,18 @@ bool CastAquaticFormAction::isUseful()
         return false;
     }
 
-    // Check mana requirements first - if we can't cast, allow fallback to swim to surface
-    if (!CastSpellAction::isPossible())
-    {
-        return false; // Will fall back to generic swim to surface action
-    }
-
     // Check if in water or underwater using bot's position directly
     int8 liquidState = bot->GetLiquidData().Status;
     bool inWater = liquidState == LIQUID_MAP_IN_WATER || liquidState == LIQUID_MAP_UNDER_WATER;
 
+    // MUST be in water to use aquatic form
     if (!inWater)
     {
         return false;
     }
 
-    // Always use aquatic form when in water, unless in combat and not drowning
-    bool inCombat = bot->IsInCombat();
-
-    if (!inCombat)
-    {
-        // Not in combat - always use aquatic form in water for convenience and safety
-        return true;
-    }
-    else
-    {
-        // If in combat, only use for emergencies (breath-based only)
-        uint32 breathTimer = bot->GetUInt32Value(PLAYER_BYTES_3) & 0xFF;
-
-        // Emergency: Use only if breath is critically low
-        return breathTimer <= DROWNING_EMERGENCY_THRESHOLD_SECONDS;
-    }
+    // Always use aquatic form when in water
+    return true;
 }
 
 bool CastTreeFormAction::isUseful()
