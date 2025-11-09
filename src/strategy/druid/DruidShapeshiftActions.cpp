@@ -64,6 +64,28 @@ bool CastAquaticFormAction::isPossible()
 
 bool CastAquaticFormAction::isUseful()
 {
+    // DEBUG: Liquid state logging (throttled to once per 2 seconds)
+    static std::map<uint32, time_t> lastLiquidCheck;
+    time_t now = time(nullptr);
+    if (!lastLiquidCheck.count(bot->GetGUID().GetCounter()) || now - lastLiquidCheck[bot->GetGUID().GetCounter()] >= 2)
+    {
+        lastLiquidCheck[bot->GetGUID().GetCounter()] = now;
+
+        int8 liquidState = bot->GetLiquidData().Status;
+        uint32 breathTimer = bot->GetUInt32Value(PLAYER_BYTES_3) & 0xFF;
+        bool canSwim = bot->CanSwim();
+        bool isSwimming = bot->IsSwimming();
+        bool hasAquaticForm = botAI->HasAura("aquatic form", bot);
+
+        std::ostringstream out;
+        out << "[AQUATIC] LIQUID: state=" << (int)liquidState
+            << " breath=" << breathTimer
+            << " IsSwimming()=" << isSwimming
+            << " HasAquatic=" << hasAquaticForm;
+
+        botAI->TellMaster(out.str());
+    }
+
     // Don't use if already in aquatic form
     if (botAI->HasAura("aquatic form", bot))
     {
@@ -73,17 +95,6 @@ bool CastAquaticFormAction::isUseful()
     // Check if in water or underwater using bot's position directly
     int8 liquidState = bot->GetLiquidData().Status;
     bool inWater = liquidState == LIQUID_MAP_IN_WATER || liquidState == LIQUID_MAP_UNDER_WATER;
-
-    // DEBUG: Log the state
-    if (botAI->HasStrategy("debug", BotState::BOT_STATE_NON_COMBAT))
-    {
-        std::ostringstream out;
-        out << "AquaticForm check: liquidState=" << (int)liquidState
-            << " inWater=" << inWater
-            << " UNDER=" << (liquidState == LIQUID_MAP_UNDER_WATER)
-            << " IN=" << (liquidState == LIQUID_MAP_IN_WATER);
-        botAI->TellMaster(out.str());
-    }
 
     // MUST be in water to use aquatic form
     if (!inWater)
