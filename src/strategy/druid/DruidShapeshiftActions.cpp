@@ -113,7 +113,15 @@ bool CastAquaticFormAction::isUseful()
     // Otherwise, only use aquatic form when not in combat
     Unit* target = AI_VALUE(Unit*, "current target");
     return !target;
-}bool CastTreeFormAction::isUseful()
+}
+
+NextAction** CastAquaticFormAction::getAlternatives()
+{
+    // If no mana for aquatic form but drowning, swim to surface instead
+    return NextAction::array(0, new NextAction("swim to surface"), nullptr);
+}
+
+bool CastTreeFormAction::isUseful()
 {
     return GetTarget() && CastSpellAction::isUseful() && !botAI->HasAura(33891, bot);
 }

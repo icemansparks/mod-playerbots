@@ -53,6 +53,7 @@ public:
 
     bool isPossible() override;
     bool isUseful() override;
+    NextAction** getAlternatives() override;
 };
 
 class CastTravelFormAction : public CastBuffSpellAction
