@@ -74,6 +74,17 @@ bool CastAquaticFormAction::isUseful()
     int8 liquidState = bot->GetLiquidData().Status;
     bool inWater = liquidState == LIQUID_MAP_IN_WATER || liquidState == LIQUID_MAP_UNDER_WATER;
 
+    // DEBUG: Log the state
+    if (botAI->HasStrategy("debug", BotState::BOT_STATE_NON_COMBAT))
+    {
+        std::ostringstream out;
+        out << "AquaticForm check: liquidState=" << (int)liquidState
+            << " inWater=" << inWater
+            << " UNDER=" << (liquidState == LIQUID_MAP_UNDER_WATER)
+            << " IN=" << (liquidState == LIQUID_MAP_IN_WATER);
+        botAI->TellMaster(out.str());
+    }
+
     // MUST be in water to use aquatic form
     if (!inWater)
     {
