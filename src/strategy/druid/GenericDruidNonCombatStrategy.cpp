@@ -132,6 +132,9 @@ void GenericDruidNonCombatStrategy::InitTriggers(std::vector<TriggerNode*>& trig
 
     triggers.push_back(new TriggerNode("often", NextAction::array(0, new NextAction("apply oil", 1.0f), nullptr)));
 
+    // DEBUG: Check liquid state periodically
+    triggers.push_back(new TriggerNode("often", NextAction::array(0, new NextAction("check liquid state", 0.1f), nullptr)));
+
     triggers.push_back(
         new TriggerNode("party member critical health",
                         NextAction::array(0,

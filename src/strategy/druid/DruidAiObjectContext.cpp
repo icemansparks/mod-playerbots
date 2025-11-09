@@ -18,6 +18,7 @@
 #include "HealDruidStrategy.h"
 #include "MeleeDruidStrategy.h"
 #include "OffhealDruidCatStrategy.h"
+#include "CheckLiquidStateAction.h"
 #include "Playerbots.h"
 
 class DruidStrategyFactoryInternal : public NamedObjectContext<Strategy>
@@ -241,6 +242,7 @@ public:
         creators["moonfire on attacker"] = &DruidAiObjectContextInternal::moonfire_on_attacker;
         creators["enrage"] = &DruidAiObjectContextInternal::enrage;
         creators["force of nature"] = &DruidAiObjectContextInternal::force_of_nature;
+        creators["check liquid state"] = &DruidAiObjectContextInternal::check_liquid_state;
     }
 
 private:
@@ -326,6 +328,7 @@ private:
     static Action* moonfire_on_attacker(PlayerbotAI* ai) { return new CastMoonfireOnAttackerAction(ai); }
     static Action* enrage(PlayerbotAI* ai) { return new CastEnrageAction(ai); }
     static Action* force_of_nature(PlayerbotAI* ai) { return new CastForceOfNatureAction(ai); }
+    static Action* check_liquid_state(PlayerbotAI* ai) { return new CheckLiquidStateAction(ai); }
 };
 
 SharedNamedObjectContextList<Strategy> DruidAiObjectContext::sharedStrategyContexts;
