@@ -584,7 +584,20 @@ bool NotDpsAoeTargetActiveTrigger::IsActive()
     return dps && target != dps;
 }
 
-bool IsSwimmingTrigger::IsActive() { return AI_VALUE2(bool, "swimming", "self target"); }
+bool IsSwimmingTrigger::IsActive()
+{
+    bool swimming = AI_VALUE2(bool, "swimming", "self target");
+
+    // DEBUG
+    if (botAI->HasStrategy("debug", BotState::BOT_STATE_NON_COMBAT))
+    {
+        std::ostringstream out;
+        out << "SwimmingTrigger: " << (swimming ? "ACTIVE" : "INACTIVE");
+        botAI->TellMaster(out.str());
+    }
+
+    return swimming;
+}
 
 bool IsDrowningTrigger::IsActive()
 {
