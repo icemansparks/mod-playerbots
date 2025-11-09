@@ -65,6 +65,7 @@
 #include "XpGainAction.h"
 #include "NewRpgAction.h"
 #include "CancelChannelAction.h"
+#include "CheckLiquidStateAction.h"
 
 class PlayerbotAI;
 
@@ -145,6 +146,7 @@ public:
         creators["attack duel opponent"] = &ActionContext::attack_duel_opponent;
         creators["drop target"] = &ActionContext::drop_target;
         creators["check mail"] = &ActionContext::check_mail;
+        creators["check liquid state"] = &ActionContext::check_liquid_state;
         creators["say"] = &ActionContext::say;
         creators["reveal gathering item"] = &ActionContext::reveal_gathering_item;
         creators["outfit"] = &ActionContext::outfit;
@@ -278,6 +280,7 @@ private:
     static Action* check_values(PlayerbotAI* botAI) { return new CheckValuesAction(botAI); }
     static Action* greet(PlayerbotAI* botAI) { return new GreetAction(botAI); }
     static Action* check_mail(PlayerbotAI* botAI) { return new CheckMailAction(botAI); }
+    static Action* check_liquid_state(PlayerbotAI* botAI) { return new CheckLiquidStateAction(botAI); }
     static Action* drop_target(PlayerbotAI* botAI) { return new DropTargetAction(botAI); }
     static Action* attack_duel_opponent(PlayerbotAI* botAI) { return new AttackDuelOpponentAction(botAI); }
     static Action* guard(PlayerbotAI* botAI) { return new GuardAction(botAI); }
