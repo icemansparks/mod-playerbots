@@ -1313,6 +1313,29 @@ void PlayerbotAI::DoNextAction(bool min)
         return;
     }
 
+    // DEBUG: Liquid state logging (throttled to once per second)
+    static std::map<uint32, time_t> lastLiquidCheck;
+    if (HasStrategy("debug", BOT_STATE_NON_COMBAT))
+    {
+        time_t now = time(nullptr);
+        if (!lastLiquidCheck.count(bot->GetGUID().GetCounter()) || now - lastLiquidCheck[bot->GetGUID().GetCounter()] >= 1)
+        {
+            lastLiquidCheck[bot->GetGUID().GetCounter()] = now;
+
+            int8 liquidState = bot->GetLiquidData().Status;
+            uint32 breathTimer = bot->GetUInt32Value(PLAYER_BYTES_3) & 0xFF;
+            bool canSwim = bot->CanSwim();
+
+            std::ostringstream out;
+            out << "LIQUID: state=" << (int)liquidState
+                << " (0=none,1=above,2=in,3=under)"
+                << " breath=" << breathTimer
+                << " canSwim=" << canSwim;
+
+            TellMaster(out.str());
+        }
+    }
+
     // Change engine if just died
     bool isBotAlive = bot->IsAlive();
     if (currentEngine != engines[BOT_STATE_DEAD] && !isBotAlive)
