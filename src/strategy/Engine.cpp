@@ -435,6 +435,33 @@ void Engine::ProcessTriggers(bool minimal)
 {
     std::unordered_map<Trigger*, Event> fires;
     uint32 now = getMSTime();
+
+    // DEBUG: Log all triggers for druids to verify registration
+    static std::map<uint32, time_t> lastTriggerLog;
+    if (bot && bot->getClass() == CLASS_DRUID)
+    {
+        time_t currentTime = time(nullptr);
+        if (!lastTriggerLog.count(bot->GetGUID().GetCounter()) || currentTime - lastTriggerLog[bot->GetGUID().GetCounter()] >= 5)
+        {
+            lastTriggerLog[bot->GetGUID().GetCounter()] = currentTime;
+
+            std::ostringstream out;
+            out << "[ENGINE] Registered triggers: " << triggers.size();
+            bool hasSwimming = false;
+            bool hasDrowning = false;
+
+            for (std::vector<TriggerNode*>::iterator i = triggers.begin(); i != triggers.end(); i++)
+            {
+                TriggerNode* node = *i;
+                if (node && node->getName() == "swimming") hasSwimming = true;
+                if (node && node->getName() == "drowning") hasDrowning = true;
+            }
+
+            out << " swimming=" << hasSwimming << " drowning=" << hasDrowning;
+            botAI->TellMaster(out.str());
+        }
+    }
+
     for (std::vector<TriggerNode*>::iterator i = triggers.begin(); i != triggers.end(); i++)
     {
         TriggerNode* node = *i;
