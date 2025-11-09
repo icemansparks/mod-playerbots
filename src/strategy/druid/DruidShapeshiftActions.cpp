@@ -64,28 +64,6 @@ bool CastAquaticFormAction::isPossible()
 
 bool CastAquaticFormAction::isUseful()
 {
-    // DEBUG: Liquid state logging (throttled to once per 2 seconds)
-    static std::map<uint32, time_t> lastLiquidCheck;
-    time_t now = time(nullptr);
-    if (!lastLiquidCheck.count(bot->GetGUID().GetCounter()) || now - lastLiquidCheck[bot->GetGUID().GetCounter()] >= 2)
-    {
-        lastLiquidCheck[bot->GetGUID().GetCounter()] = now;
-
-        int8 liquidState = bot->GetLiquidData().Status;
-        uint32 breathTimer = bot->GetUInt32Value(PLAYER_BYTES_3) & 0xFF;
-        bool canSwim = bot->CanSwim();
-        bool isSwimming = bot->IsSwimming();
-        bool hasAquaticForm = botAI->HasAura("aquatic form", bot);
-
-        std::ostringstream out;
-        out << "[AQUATIC] LIQUID: state=" << (int)liquidState
-            << " breath=" << breathTimer
-            << " IsSwimming()=" << isSwimming
-            << " HasAquatic=" << hasAquaticForm;
-
-        botAI->TellMaster(out.str());
-    }
-
     // Don't use if already in aquatic form
     if (botAI->HasAura("aquatic form", bot))
     {
@@ -96,6 +74,14 @@ bool CastAquaticFormAction::isUseful()
     int8 liquidState = bot->GetLiquidData().Status;
     bool inWater = liquidState == LIQUID_MAP_IN_WATER || liquidState == LIQUID_MAP_UNDER_WATER;
 
+    // Log every time this is checked (action is being evaluated)
+    std::ostringstream out;
+    out << "[AQUATIC ACTION] liquidState=" << (int)liquidState
+        << " inWater=" << inWater
+        << " IsSwimming()=" << bot->IsSwimming()
+        << " breath=" << (bot->GetUInt32Value(PLAYER_BYTES_3) & 0xFF);
+    botAI->TellMaster(out.str());
+
     // MUST be in water to use aquatic form
     if (!inWater)
     {
@@ -104,9 +90,7 @@ bool CastAquaticFormAction::isUseful()
 
     // Always use aquatic form when in water
     return true;
-}
-
-bool CastTreeFormAction::isUseful()
+}bool CastTreeFormAction::isUseful()
 {
     return GetTarget() && CastSpellAction::isUseful() && !botAI->HasAura(33891, bot);
 }

@@ -588,12 +588,20 @@ bool IsSwimmingTrigger::IsActive()
 {
     bool swimming = AI_VALUE2(bool, "swimming", "self target");
 
-    // DEBUG
-    if (botAI->HasStrategy("debug", BotState::BOT_STATE_NON_COMBAT))
+    // Log every check for druids to verify trigger is being evaluated
+    if (bot->getClass() == CLASS_DRUID)
     {
-        std::ostringstream out;
-        out << "SwimmingTrigger: " << (swimming ? "ACTIVE" : "INACTIVE");
-        botAI->TellMaster(out.str());
+        static std::map<uint32, time_t> lastCheck;
+        time_t now = time(nullptr);
+        if (!lastCheck.count(bot->GetGUID().GetCounter()) || now - lastCheck[bot->GetGUID().GetCounter()] >= 3)
+        {
+            lastCheck[bot->GetGUID().GetCounter()] = now;
+
+            std::ostringstream out;
+            out << "[SWIM TRIGGER] swimming=" << swimming
+                << " liquidState=" << (int)bot->GetLiquidData().Status;
+            botAI->TellMaster(out.str());
+        }
     }
 
     return swimming;
@@ -605,6 +613,25 @@ bool IsDrowningTrigger::IsActive()
     // LIQUID_MAP_UNDER_WATER = diving/underwater (breath timer active)
     // LIQUID_MAP_IN_WATER = swimming on surface (no drowning risk)
     int8 botInLiquidState = bot->GetLiquidData().Status;
+
+    // Log for druids to verify trigger is being checked
+    if (bot->getClass() == CLASS_DRUID)
+    {
+        static std::map<uint32, time_t> lastCheck;
+        time_t now = time(nullptr);
+        if (!lastCheck.count(bot->GetGUID().GetCounter()) || now - lastCheck[bot->GetGUID().GetCounter()] >= 3)
+        {
+            lastCheck[bot->GetGUID().GetCounter()] = now;
+
+            uint32 breathTimer = bot->GetUInt32Value(PLAYER_BYTES_3) & 0xFF;
+            std::ostringstream out;
+            out << "[DROWN TRIGGER] liquidState=" << (int)botInLiquidState
+                << " underwater=" << (botInLiquidState == LIQUID_MAP_UNDER_WATER)
+                << " breath=" << breathTimer;
+            botAI->TellMaster(out.str());
+        }
+    }
+
     if (botInLiquidState != LIQUID_MAP_UNDER_WATER)
     {
         return false; // Either on surface swimming or on land - no drowning risk
