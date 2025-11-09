@@ -600,7 +600,7 @@ bool IsSwimmingTrigger::IsActive()
             std::ostringstream out;
             out << "SWIM_TRIGGER: " << swimming
                 << " liq=" << (int)bot->GetLiquidData().Status;
-            botAI->TellMasterNoFacing(out);
+            botAI->TellMasterNoFacing(out.str());
         }
     }
 
@@ -627,7 +627,7 @@ bool IsDrowningTrigger::IsActive()
             std::ostringstream out;
             out << "DROWN_TRIGGER: liq=" << (int)botInLiquidState
                 << " breath=" << breathTimer;
-            botAI->TellMasterNoFacing(out);
+            botAI->TellMasterNoFacing(out.str());
         }
     }
 

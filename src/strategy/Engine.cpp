@@ -458,7 +458,7 @@ void Engine::ProcessTriggers(bool minimal)
             }
 
             out << " swim=" << hasSwimming << " drown=" << hasDrowning;
-            botAI->TellMasterNoFacing(out);
+            botAI->TellMasterNoFacing(out.str());
         }
     }
 

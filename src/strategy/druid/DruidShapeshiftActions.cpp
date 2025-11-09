@@ -82,7 +82,7 @@ bool CastAquaticFormAction::isUseful()
             << " inWater=" << inWater
             << " swim=" << bot->IsSwimming()
             << " breath=" << (bot->GetUInt32Value(PLAYER_BYTES_3) & 0xFF);
-        botAI->TellMasterNoFacing(out);
+        botAI->TellMasterNoFacing(out.str());
     }
 
     // MUST be in water to use aquatic form
