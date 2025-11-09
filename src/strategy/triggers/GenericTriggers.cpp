@@ -588,18 +588,18 @@ bool IsSwimmingTrigger::IsActive()
 {
     bool swimming = AI_VALUE2(bool, "swimming", "self target");
 
-    // Log every check for druids when debug enabled
-    if (bot->getClass() == CLASS_DRUID && botAI->HasStrategy("debug", BotState::BOT_STATE_NON_COMBAT))
+    // ALWAYS log for druids to verify trigger is being called
+    if (bot->getClass() == CLASS_DRUID)
     {
         static std::map<uint32, time_t> lastCheck;
         time_t now = time(nullptr);
-        if (!lastCheck.count(bot->GetGUID().GetCounter()) || now - lastCheck[bot->GetGUID().GetCounter()] >= 3)
+        if (!lastCheck.count(bot->GetGUID().GetCounter()) || now - lastCheck[bot->GetGUID().GetCounter()] >= 2)
         {
             lastCheck[bot->GetGUID().GetCounter()] = now;
 
             std::ostringstream out;
-            out << "swim check: result=" << swimming
-                << " liquid=" << (int)bot->GetLiquidData().Status;
+            out << "SWIM_TRIGGER: " << swimming
+                << " liq=" << (int)bot->GetLiquidData().Status;
             botAI->TellMasterNoFacing(out);
         }
     }
@@ -614,19 +614,18 @@ bool IsDrowningTrigger::IsActive()
     // LIQUID_MAP_IN_WATER = swimming on surface (no drowning risk)
     int8 botInLiquidState = bot->GetLiquidData().Status;
 
-    // Log for druids when debug enabled
-    if (bot->getClass() == CLASS_DRUID && botAI->HasStrategy("debug", BotState::BOT_STATE_NON_COMBAT))
+    // ALWAYS log for druids to verify trigger is being called
+    if (bot->getClass() == CLASS_DRUID)
     {
         static std::map<uint32, time_t> lastCheck;
         time_t now = time(nullptr);
-        if (!lastCheck.count(bot->GetGUID().GetCounter()) || now - lastCheck[bot->GetGUID().GetCounter()] >= 3)
+        if (!lastCheck.count(bot->GetGUID().GetCounter()) || now - lastCheck[bot->GetGUID().GetCounter()] >= 2)
         {
             lastCheck[bot->GetGUID().GetCounter()] = now;
 
             uint32 breathTimer = bot->GetUInt32Value(PLAYER_BYTES_3) & 0xFF;
             std::ostringstream out;
-            out << "drown check: liquid=" << (int)botInLiquidState
-                << " under=" << (botInLiquidState == LIQUID_MAP_UNDER_WATER)
+            out << "DROWN_TRIGGER: liq=" << (int)botInLiquidState
                 << " breath=" << breathTimer;
             botAI->TellMasterNoFacing(out);
         }

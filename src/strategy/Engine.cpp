@@ -436,8 +436,8 @@ void Engine::ProcessTriggers(bool minimal)
     std::unordered_map<Trigger*, Event> fires;
     uint32 now = getMSTime();
 
-    // DEBUG: Log all triggers for druids to verify registration
-    if (bot && bot->getClass() == CLASS_DRUID && botAI->HasStrategy("debug", BOT_STATE_NON_COMBAT))
+    // ALWAYS log for druids to verify trigger registration
+    if (bot && bot->getClass() == CLASS_DRUID)
     {
         static std::map<uint32, time_t> lastTriggerLog;
         time_t currentTime = time(nullptr);
@@ -446,7 +446,7 @@ void Engine::ProcessTriggers(bool minimal)
             lastTriggerLog[bot->GetGUID().GetCounter()] = currentTime;
 
             std::ostringstream out;
-            out << "triggers: " << triggers.size();
+            out << "ENGINE: " << triggers.size() << " triggers";
             bool hasSwimming = false;
             bool hasDrowning = false;
 
