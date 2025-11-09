@@ -588,8 +588,8 @@ bool IsSwimmingTrigger::IsActive()
 {
     bool swimming = AI_VALUE2(bool, "swimming", "self target");
 
-    // Log every check for druids to verify trigger is being evaluated
-    if (bot->getClass() == CLASS_DRUID)
+    // Log every check for druids when debug enabled
+    if (bot->getClass() == CLASS_DRUID && botAI->HasStrategy("debug", BotState::BOT_STATE_NON_COMBAT))
     {
         static std::map<uint32, time_t> lastCheck;
         time_t now = time(nullptr);
@@ -598,9 +598,9 @@ bool IsSwimmingTrigger::IsActive()
             lastCheck[bot->GetGUID().GetCounter()] = now;
 
             std::ostringstream out;
-            out << "[SWIM TRIGGER] swimming=" << swimming
-                << " liquidState=" << (int)bot->GetLiquidData().Status;
-            botAI->TellMaster(out.str());
+            out << "swim check: result=" << swimming
+                << " liquid=" << (int)bot->GetLiquidData().Status;
+            botAI->TellMasterNoFacing(out);
         }
     }
 
@@ -614,8 +614,8 @@ bool IsDrowningTrigger::IsActive()
     // LIQUID_MAP_IN_WATER = swimming on surface (no drowning risk)
     int8 botInLiquidState = bot->GetLiquidData().Status;
 
-    // Log for druids to verify trigger is being checked
-    if (bot->getClass() == CLASS_DRUID)
+    // Log for druids when debug enabled
+    if (bot->getClass() == CLASS_DRUID && botAI->HasStrategy("debug", BotState::BOT_STATE_NON_COMBAT))
     {
         static std::map<uint32, time_t> lastCheck;
         time_t now = time(nullptr);
@@ -625,10 +625,10 @@ bool IsDrowningTrigger::IsActive()
 
             uint32 breathTimer = bot->GetUInt32Value(PLAYER_BYTES_3) & 0xFF;
             std::ostringstream out;
-            out << "[DROWN TRIGGER] liquidState=" << (int)botInLiquidState
-                << " underwater=" << (botInLiquidState == LIQUID_MAP_UNDER_WATER)
+            out << "drown check: liquid=" << (int)botInLiquidState
+                << " under=" << (botInLiquidState == LIQUID_MAP_UNDER_WATER)
                 << " breath=" << breathTimer;
-            botAI->TellMaster(out.str());
+            botAI->TellMasterNoFacing(out);
         }
     }
 

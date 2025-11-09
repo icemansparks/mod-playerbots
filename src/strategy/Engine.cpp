@@ -437,16 +437,16 @@ void Engine::ProcessTriggers(bool minimal)
     uint32 now = getMSTime();
 
     // DEBUG: Log all triggers for druids to verify registration
-    static std::map<uint32, time_t> lastTriggerLog;
-    if (bot && bot->getClass() == CLASS_DRUID)
+    if (bot && bot->getClass() == CLASS_DRUID && botAI->HasStrategy("debug", BOT_STATE_NON_COMBAT))
     {
+        static std::map<uint32, time_t> lastTriggerLog;
         time_t currentTime = time(nullptr);
         if (!lastTriggerLog.count(bot->GetGUID().GetCounter()) || currentTime - lastTriggerLog[bot->GetGUID().GetCounter()] >= 5)
         {
             lastTriggerLog[bot->GetGUID().GetCounter()] = currentTime;
 
             std::ostringstream out;
-            out << "[ENGINE] Registered triggers: " << triggers.size();
+            out << "triggers: " << triggers.size();
             bool hasSwimming = false;
             bool hasDrowning = false;
 
@@ -457,8 +457,8 @@ void Engine::ProcessTriggers(bool minimal)
                 if (node && node->getName() == "drowning") hasDrowning = true;
             }
 
-            out << " swimming=" << hasSwimming << " drowning=" << hasDrowning;
-            botAI->TellMaster(out.str());
+            out << " swim=" << hasSwimming << " drown=" << hasDrowning;
+            botAI->TellMasterNoFacing(out);
         }
     }
 
