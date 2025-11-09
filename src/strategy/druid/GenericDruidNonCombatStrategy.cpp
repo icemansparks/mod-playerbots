@@ -104,11 +104,30 @@ private:
 GenericDruidNonCombatStrategy::GenericDruidNonCombatStrategy(PlayerbotAI* botAI) : NonCombatStrategy(botAI)
 {
     actionNodeFactories.Add(new GenericDruidNonCombatStrategyActionNodeFactory());
+
+    // Debug logging
+    Unit* bot = botAI->GetBot();
+    if (bot)
+    {
+        std::ostringstream out;
+        out << "GenericDruidNonCombatStrategy created for " << bot->GetName();
+        botAI->TellMasterNoFacing(out.str());
+    }
 }
 
 void GenericDruidNonCombatStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 {
     NonCombatStrategy::InitTriggers(triggers);
+
+    // Debug logging
+    Player* master = botAI->GetMaster();
+    Unit* bot = botAI->GetBot();
+    if (bot && master)
+    {
+        std::ostringstream out;
+        out << "GenericDruidNonCombatStrategy::InitTriggers starting, current count: " << triggers.size();
+        botAI->TellMasterNoFacing(out.str());
+    }
 
     triggers.push_back(new TriggerNode("mark of the wild", NextAction::array(0, new NextAction("mark of the wild", 14.0f), nullptr)));
     // triggers.push_back(new TriggerNode("thorns", NextAction::array(0, new NextAction("thorns", 12.0f), nullptr)));
@@ -173,6 +192,29 @@ void GenericDruidNonCombatStrategy::InitTriggers(std::vector<TriggerNode*>& trig
         triggers.push_back(new TriggerNode("often", NextAction::array(0, new NextAction("apply oil", 1.0f), nullptr)));
     if (specTab == 1) // Feral
         triggers.push_back(new TriggerNode("often", NextAction::array(0, new NextAction("apply stone", 1.0f), nullptr)));
+
+    // Debug logging at end
+    if (bot && master)
+    {
+        std::ostringstream out;
+        out << "GenericDruidNonCombatStrategy::InitTriggers DONE, final count: " << triggers.size();
+        botAI->TellMasterNoFacing(out.str());
+
+        // Check if our triggers are in the list
+        bool hasSwimming = false;
+        bool hasDrowning = false;
+        for (auto* trigNode : triggers)
+        {
+            if (trigNode && trigNode->getName() == "swimming")
+                hasSwimming = true;
+            if (trigNode && trigNode->getName() == "drowning")
+                hasDrowning = true;
+        }
+
+        std::ostringstream out2;
+        out2 << "Swimming trigger: " << (hasSwimming ? "YES" : "NO") << ", Drowning trigger: " << (hasDrowning ? "YES" : "NO");
+        botAI->TellMasterNoFacing(out2.str());
+    }
 
 }
 
