@@ -16,6 +16,7 @@ public:
     GenericDruidNonCombatStrategy(PlayerbotAI* botAI);
 
     std::string const getName() override { return "nc"; }
+    NextAction** getDefaultActions() override;
     void InitTriggers(std::vector<TriggerNode*>& triggers) override;
 };
 

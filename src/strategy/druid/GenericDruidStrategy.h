@@ -16,6 +16,7 @@ protected:
     GenericDruidStrategy(PlayerbotAI* botAI);
 
 public:
+    NextAction** getDefaultActions() override;
     void InitTriggers(std::vector<TriggerNode*>& triggers) override;
 };
 

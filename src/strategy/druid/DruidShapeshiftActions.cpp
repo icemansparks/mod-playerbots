@@ -35,9 +35,35 @@ bool CastTravelFormAction::isUseful()
 
 bool CastCasterFormAction::isUseful()
 {
-    return botAI->HasAnyAuraOf(GetTarget(), "dire bear form", "bear form", "cat form", "travel form", "aquatic form",
-                               "flight form", "swift flight form", "moonkin form", nullptr) &&
-           AI_VALUE2(uint8, "mana", "self target") > sPlayerbotAIConfig->mediumHealth;
+    // Check if in a shapeshift form
+    bool inShapeshift = botAI->HasAnyAuraOf(GetTarget(), "dire bear form", "bear form", "cat form", "travel form", "aquatic form",
+                               "flight form", "swift flight form", "moonkin form", nullptr);
+
+    if (!inShapeshift)
+        return false;
+
+    // If in aquatic form, check if we should stay in it for drowning prevention
+    if (botAI->HasAura("aquatic form", bot))
+    {
+        int8 liquidState = bot->GetLiquidData().Status;
+
+        // If underwater, check breath timer
+        if (liquidState == LIQUID_MAP_UNDER_WATER)
+        {
+            uint32 breathTimer = bot->GetUInt32Value(PLAYER_BYTES_3) & 0xFF;
+            // Keep aquatic form if breath is low (drowning prevention priority)
+            if (breathTimer <= 60)
+                return false;
+        }
+
+        // If breath is safe and in combat, shift out to attack
+        Unit* target = AI_VALUE(Unit*, "current target");
+        if (target)
+            return true;
+    }
+
+    // For other forms, only shift if mana is decent
+    return AI_VALUE2(uint8, "mana", "self target") > sPlayerbotAIConfig->mediumHealth;
 }
 
 bool CastCasterFormAction::Execute(Event event)
@@ -66,33 +92,27 @@ bool CastAquaticFormAction::isUseful()
 {
     // Don't use if already in aquatic form
     if (botAI->HasAura("aquatic form", bot))
-    {
         return false;
-    }
 
-    // Check if in water or underwater using bot's position directly
+    // Get liquid status
     int8 liquidState = bot->GetLiquidData().Status;
-    bool inWater = liquidState == LIQUID_MAP_IN_WATER || liquidState == LIQUID_MAP_UNDER_WATER;
 
-    // Log when debug enabled
-    if (botAI->HasStrategy("debug", BotState::BOT_STATE_NON_COMBAT))
-    {
-        std::ostringstream out;
-        out << "aquatic check: liquid=" << (int)liquidState
-            << " inWater=" << inWater
-            << " swim=" << bot->IsSwimming()
-            << " breath=" << (bot->GetUInt32Value(PLAYER_BYTES_3) & 0xFF);
-        botAI->TellMasterNoFacing(out.str());
-    }
-
-    // MUST be in water to use aquatic form
-    if (!inWater)
-    {
+    // Not in water? Don't use aquatic form
+    if (liquidState != LIQUID_MAP_IN_WATER && liquidState != LIQUID_MAP_UNDER_WATER)
         return false;
+
+    // If underwater, check breath to prevent drowning (even during combat)
+    if (liquidState == LIQUID_MAP_UNDER_WATER)
+    {
+        uint32 breathTimer = bot->GetUInt32Value(PLAYER_BYTES_3) & 0xFF;
+        // If breath is getting low (below 60 seconds), prioritize aquatic form
+        if (breathTimer <= 60)
+            return true;
     }
 
-    // Always use aquatic form when in water
-    return true;
+    // Otherwise, only use aquatic form when not in combat
+    Unit* target = AI_VALUE(Unit*, "current target");
+    return !target;
 }bool CastTreeFormAction::isUseful()
 {
     return GetTarget() && CastSpellAction::isUseful() && !botAI->HasAura(33891, bot);

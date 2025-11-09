@@ -104,55 +104,20 @@ private:
 GenericDruidNonCombatStrategy::GenericDruidNonCombatStrategy(PlayerbotAI* botAI) : NonCombatStrategy(botAI)
 {
     actionNodeFactories.Add(new GenericDruidNonCombatStrategyActionNodeFactory());
+}
 
-    // Debug logging
-    Unit* bot = botAI->GetBot();
-    if (bot)
-    {
-        std::ostringstream out;
-        out << "GenericDruidNonCombatStrategy created for " << bot->GetName();
-        botAI->TellMasterNoFacing(out.str());
-    }
+NextAction** GenericDruidNonCombatStrategy::getDefaultActions()
+{
+    return NextAction::array(0, new NextAction("aquatic form", 0.5f), nullptr);
 }
 
 void GenericDruidNonCombatStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 {
     NonCombatStrategy::InitTriggers(triggers);
 
-    // Debug logging
-    Player* master = botAI->GetMaster();
-    Unit* bot = botAI->GetBot();
-    if (bot && master)
-    {
-        std::ostringstream out;
-        out << "GenericDruidNonCombatStrategy::InitTriggers starting, current count: " << triggers.size();
-        botAI->TellMasterNoFacing(out.str());
-    }
-
     triggers.push_back(new TriggerNode("mark of the wild", NextAction::array(0, new NextAction("mark of the wild", 14.0f), nullptr)));
-    // triggers.push_back(new TriggerNode("thorns", NextAction::array(0, new NextAction("thorns", 12.0f), nullptr)));
-    // triggers.push_back(new TriggerNode("cure poison", NextAction::array(0, new NextAction("abolish poison", 21.0f),
-    // nullptr)));
     triggers.push_back(new TriggerNode("party member cure poison", NextAction::array(0, new NextAction("abolish poison on party", 20.0f), nullptr)));
     triggers.push_back(new TriggerNode("party member dead", NextAction::array(0, new NextAction("revive", ACTION_CRITICAL_HEAL + 10), nullptr)));
-    // triggers.push_back(new TriggerNode("low mana", NextAction::array(0, new NextAction("innervate", ACTION_EMERGENCY
-    // + 5), nullptr))); triggers.push_back(new TriggerNode("swimming", NextAction::array(0, new NextAction("aquatic
-    // form", 1.0f), nullptr)));
-
-    // Aquatic form management
-    // High priority: Breath-based drowning prevention (triggers before damage)
-    triggers.push_back(new TriggerNode("drowning", NextAction::array(0, new NextAction("aquatic form", ACTION_EMERGENCY + 1), nullptr)));
-
-    // Medium priority: Swimming convenience (for non-combat situations primarily)
-    triggers.push_back(new TriggerNode("swimming", NextAction::array(0, new NextAction("aquatic form", 2.0f), nullptr)));
-
-    // Low priority: Switch to caster form during combat when breath is safe and mana is good
-    triggers.push_back(new TriggerNode("aquatic form to caster", NextAction::array(0, new NextAction("caster form", 0.5f), nullptr)));
-
-    triggers.push_back(new TriggerNode("often", NextAction::array(0, new NextAction("apply oil", 1.0f), nullptr)));
-
-    // DEBUG: Check liquid state periodically
-    triggers.push_back(new TriggerNode("often", NextAction::array(0, new NextAction("check liquid state", 0.1f), nullptr)));
 
     triggers.push_back(
         new TriggerNode("party member critical health",
@@ -192,30 +157,6 @@ void GenericDruidNonCombatStrategy::InitTriggers(std::vector<TriggerNode*>& trig
         triggers.push_back(new TriggerNode("often", NextAction::array(0, new NextAction("apply oil", 1.0f), nullptr)));
     if (specTab == 1) // Feral
         triggers.push_back(new TriggerNode("often", NextAction::array(0, new NextAction("apply stone", 1.0f), nullptr)));
-
-    // Debug logging at end
-    if (bot && master)
-    {
-        std::ostringstream out;
-        out << "GenericDruidNonCombatStrategy::InitTriggers DONE, final count: " << triggers.size();
-        botAI->TellMasterNoFacing(out.str());
-
-        // Check if our triggers are in the list
-        bool hasSwimming = false;
-        bool hasDrowning = false;
-        for (auto* trigNode : triggers)
-        {
-            if (trigNode && trigNode->getName() == "swimming")
-                hasSwimming = true;
-            if (trigNode && trigNode->getName() == "drowning")
-                hasDrowning = true;
-        }
-
-        std::ostringstream out2;
-        out2 << "Swimming trigger: " << (hasSwimming ? "YES" : "NO") << ", Drowning trigger: " << (hasDrowning ? "YES" : "NO");
-        botAI->TellMasterNoFacing(out2.str());
-    }
-
 }
 
 GenericDruidBuffStrategy::GenericDruidBuffStrategy(PlayerbotAI* botAI) : NonCombatStrategy(botAI)

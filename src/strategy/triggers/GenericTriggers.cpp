@@ -586,75 +586,22 @@ bool NotDpsAoeTargetActiveTrigger::IsActive()
 
 bool IsSwimmingTrigger::IsActive()
 {
-    bool swimming = AI_VALUE2(bool, "swimming", "self target");
-
-    // ALWAYS log for druids to verify trigger is being called
-    if (bot->getClass() == CLASS_DRUID)
-    {
-        static std::map<uint32, time_t> lastCheck;
-        time_t now = time(nullptr);
-        if (!lastCheck.count(bot->GetGUID().GetCounter()) || now - lastCheck[bot->GetGUID().GetCounter()] >= 2)
-        {
-            lastCheck[bot->GetGUID().GetCounter()] = now;
-
-            std::ostringstream out;
-            out << "SWIM_TRIGGER: " << swimming
-                << " liq=" << (int)bot->GetLiquidData().Status;
-            botAI->TellMasterNoFacing(out.str());
-        }
-    }
-
-    return swimming;
+    return AI_VALUE2(bool, "swimming", "self target");
 }
 
 bool IsDrowningTrigger::IsActive()
 {
-    // Check if bot is underwater (diving) - not just swimming on surface
-    // LIQUID_MAP_UNDER_WATER = diving/underwater (breath timer active)
-    // LIQUID_MAP_IN_WATER = swimming on surface (no drowning risk)
-    int8 botInLiquidState = bot->GetLiquidData().Status;
+    int8 liquidState = bot->GetLiquidData().Status;
 
-    // ALWAYS log for druids to verify trigger is being called
-    if (bot->getClass() == CLASS_DRUID)
-    {
-        static std::map<uint32, time_t> lastCheck;
-        time_t now = time(nullptr);
-        if (!lastCheck.count(bot->GetGUID().GetCounter()) || now - lastCheck[bot->GetGUID().GetCounter()] >= 2)
-        {
-            lastCheck[bot->GetGUID().GetCounter()] = now;
+    // Only trigger when underwater
+    if (liquidState != LIQUID_MAP_UNDER_WATER)
+        return false;
 
-            uint32 breathTimer = bot->GetUInt32Value(PLAYER_BYTES_3) & 0xFF;
-            std::ostringstream out;
-            out << "DROWN_TRIGGER: liq=" << (int)botInLiquidState
-                << " breath=" << breathTimer;
-            botAI->TellMasterNoFacing(out.str());
-        }
-    }
+    // Check breath timer (counts down from 180)
+    uint32 breathTimer = bot->GetUInt32Value(PLAYER_BYTES_3) & 0xFF;
 
-    if (botInLiquidState != LIQUID_MAP_UNDER_WATER)
-    {
-        return false; // Either on surface swimming or on land - no drowning risk
-    }
-
-    // Check breath timer - trigger when breath is getting low but before drowning starts
-    // Breath timer starts at 180 seconds (3 minutes) and counts down
-    uint32 breathTimer = bot->GetUInt32Value(PLAYER_BYTES_3) & 0xFF; // Get current breath value
-
-    // Trigger when breath drops below threshold (1/3 remaining)
-    // This gives plenty of time for action before actual drowning damage starts
-    if (breathTimer <= DROWNING_BREATH_THRESHOLD_SECONDS)
-    {
-        // For druids: Don't trigger if already in aquatic form
-        if (bot->getClass() == CLASS_DRUID && botAI->HasAura("aquatic form", bot))
-        {
-            return false;
-        }
-
-        // For all classes (including druids not in aquatic form): trigger drowning prevention
-        return true;
-    }
-
-    return false;
+    // Trigger when breath is low (60 seconds = 1/3 remaining)
+    return breathTimer <= 60;
 }
 
 bool HasNearestAddsTrigger::IsActive()
