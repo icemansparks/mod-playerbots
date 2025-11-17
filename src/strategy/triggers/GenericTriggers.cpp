@@ -600,8 +600,8 @@ bool IsDrowningTrigger::IsActive()
     // Check breath timer (counts down from 180)
     uint32 breathTimer = bot->GetUInt32Value(PLAYER_BYTES_3) & 0xFF;
 
-    // Trigger when breath is low (60 seconds = 1/3 remaining)
-    return breathTimer <= 60;
+    // Trigger when breath is low (see DROWNING_BREATH_THRESHOLD_SECONDS)
+    return breathTimer <= DROWNING_BREATH_THRESHOLD_SECONDS;
 }
 
 bool HasNearestAddsTrigger::IsActive()
