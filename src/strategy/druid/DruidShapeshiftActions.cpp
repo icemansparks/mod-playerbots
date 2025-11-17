@@ -52,7 +52,7 @@ bool CastCasterFormAction::isUseful()
         {
             uint32 breathTimer = bot->GetUInt32Value(PLAYER_BYTES_3) & 0xFF;
             // Keep aquatic form if breath is low (drowning prevention priority)
-            if (breathTimer <= 60)
+            if (breathTimer <= DROWNING_BREATH_THRESHOLD_SECONDS)
                 return false;
         }
 
