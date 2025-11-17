@@ -435,7 +435,6 @@ void Engine::ProcessTriggers(bool minimal)
 {
     std::unordered_map<Trigger*, Event> fires;
     uint32 now = getMSTime();
-
     for (std::vector<TriggerNode*>::iterator i = triggers.begin(); i != triggers.end(); i++)
     {
         TriggerNode* node = *i;
