@@ -65,33 +65,24 @@ bool HurricaneChannelCheckTrigger::IsActive()
 
 bool AquaticFormToCasterTrigger::IsActive()
 {
-    // Only trigger if bot is in aquatic form
-    if (!botAI->HasAura("aquatic form", bot))
+    // This trigger determines when to leave aquatic form for combat
+    // Only trigger if bot is in aquatic form and in combat
+    if (!botAI->HasAura("aquatic form", bot) || !bot->IsInCombat())
     {
         return false;
     }
 
-    // Only consider switching during combat
-    if (!bot->IsInCombat())
-    {
-        return false;
-    }
-
-    // Check if bot is in water
+    // Don't leave aquatic form if drowning - survival is priority
     int8 liquidState = bot->GetLiquidData().Status;
-    if (liquidState != LIQUID_MAP_IN_WATER && liquidState != LIQUID_MAP_UNDER_WATER)
+    if (liquidState == LIQUID_MAP_UNDER_WATER)
     {
-        return false; // Game will handle form removal on land
+        uint32 breathTimer = bot->GetUInt32Value(PLAYER_BYTES_3) & 0xFF;
+        if (breathTimer <= DROWNING_BREATH_THRESHOLD_SECONDS)
+        {
+            return false;
+        }
     }
 
-    // Don't switch if drowning - survival priority
-    uint32 breathTimer = bot->GetUInt32Value(PLAYER_BYTES_3) & 0xFF;
-    if (breathTimer <= DROWNING_BREATH_THRESHOLD_SECONDS)
-    {
-        return false;
-    }
-
-    // Safe to switch for combat effectiveness if we have decent mana
-    uint8 manaPercent = AI_VALUE2(uint8, "mana", "self target");
-    return manaPercent > DRUID_MANA_THRESHOLD_FOR_FORM_SWITCH;
+    // Safe to leave aquatic form - combat effectiveness is better in caster form
+    return true;
 }
