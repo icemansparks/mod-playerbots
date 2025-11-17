@@ -71,26 +71,24 @@ bool AquaticFormToCasterTrigger::IsActive()
         return false;
     }
 
-    // Only consider switching during combat in water
+    // Only consider switching during combat
     if (!bot->IsInCombat())
     {
         return false;
     }
 
-    // Check if bot is in water (where combat effectiveness matters)
+    // Check if bot is in water
     int8 liquidState = bot->GetLiquidData().Status;
-    bool inWater = liquidState == LIQUID_MAP_IN_WATER || liquidState == LIQUID_MAP_UNDER_WATER;
-
-    if (!inWater)
+    if (liquidState != LIQUID_MAP_IN_WATER && liquidState != LIQUID_MAP_UNDER_WATER)
     {
         return false; // Game will handle form removal on land
     }
 
-    // Self-preservation is more important - don't switch if drowning risk
+    // Don't switch if drowning - survival priority
     uint32 breathTimer = bot->GetUInt32Value(PLAYER_BYTES_3) & 0xFF;
     if (breathTimer <= DROWNING_BREATH_THRESHOLD_SECONDS)
     {
-        return false; // Stay in aquatic form to prevent drowning
+        return false;
     }
 
     // Safe to switch for combat effectiveness if we have decent mana

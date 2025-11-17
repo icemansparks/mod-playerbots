@@ -92,22 +92,25 @@ bool CastAquaticFormAction::isUseful()
 {
     // Don't use if already in aquatic form
     if (botAI->HasAura("aquatic form", bot))
+    {
         return false;
+    }
 
-    // Get liquid status
+    // Check if in water
     int8 liquidState = bot->GetLiquidData().Status;
-
-    // Not in water? Don't use aquatic form
     if (liquidState != LIQUID_MAP_IN_WATER && liquidState != LIQUID_MAP_UNDER_WATER)
+    {
         return false;
+    }
 
-    // If underwater, check breath to prevent drowning (even during combat)
+    // If underwater and drowning, use aquatic form immediately (even in combat)
     if (liquidState == LIQUID_MAP_UNDER_WATER)
     {
         uint32 breathTimer = bot->GetUInt32Value(PLAYER_BYTES_3) & 0xFF;
-        // If breath is getting low (below 60 seconds), prioritize aquatic form
-        if (breathTimer <= 60)
+        if (breathTimer <= DROWNING_BREATH_THRESHOLD_SECONDS)
+        {
             return true;
+        }
     }
 
     // Otherwise, only use aquatic form when not in combat
