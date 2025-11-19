@@ -22,6 +22,12 @@ class Position;
 #define ANGLE_90_DEG M_PI_2
 #define ANGLE_120_DEG (2.f * static_cast<float>(M_PI) / 3.f)
 
+// Drowning prevention constants
+#define DROWNING_BREATH_THRESHOLD_SECONDS 20
+#define CONSERVATIVE_SURFACE_FALLBACK_YARDS 15.0f
+#define SURFACE_SEARCH_HEIGHT_YARDS 25.0f
+#define SURFACE_TARGET_OFFSET_YARDS 1.5f
+
 class MovementAction : public Action
 {
 public:
@@ -333,6 +339,15 @@ private:
     uint32 spellId;
     float range;
     bool alive;
+};
+
+class SwimToSurfaceAction : public MovementAction
+{
+public:
+    SwimToSurfaceAction(PlayerbotAI* botAI) : MovementAction(botAI, "swim to surface") {}
+
+    bool Execute(Event event) override;
+    bool isUseful() override;
 };
 
 #endif

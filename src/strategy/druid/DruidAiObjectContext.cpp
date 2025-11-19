@@ -18,6 +18,7 @@
 #include "HealDruidStrategy.h"
 #include "MeleeDruidStrategy.h"
 #include "OffhealDruidCatStrategy.h"
+#include "CheckLiquidStateAction.h"
 #include "Playerbots.h"
 
 class DruidStrategyFactoryInternal : public NamedObjectContext<Strategy>
@@ -112,6 +113,7 @@ public:
         creators["mangle (cat)"] = &DruidTriggerFactoryInternal::mangle_cat;
         creators["ferocious bite time"] = &DruidTriggerFactoryInternal::ferocious_bite_time;
         creators["hurricane channel check"] = &DruidTriggerFactoryInternal::hurricane_channel_check;
+        creators["aquatic form to caster"] = &DruidTriggerFactoryInternal::aquatic_form_to_caster;
     }
 
 private:
@@ -149,6 +151,7 @@ private:
     static Trigger* mangle_cat(PlayerbotAI* ai) { return new MangleCatTrigger(ai); }
     static Trigger* ferocious_bite_time(PlayerbotAI* ai) { return new FerociousBiteTimeTrigger(ai); }
     static Trigger* hurricane_channel_check(PlayerbotAI* ai) { return new HurricaneChannelCheckTrigger(ai); }
+    static Trigger* aquatic_form_to_caster(PlayerbotAI* ai) { return new AquaticFormToCasterTrigger(ai); }
 };
 
 class DruidAiObjectContextInternal : public NamedObjectContext<Action>
@@ -239,6 +242,7 @@ public:
         creators["moonfire on attacker"] = &DruidAiObjectContextInternal::moonfire_on_attacker;
         creators["enrage"] = &DruidAiObjectContextInternal::enrage;
         creators["force of nature"] = &DruidAiObjectContextInternal::force_of_nature;
+        creators["check liquid state"] = &DruidAiObjectContextInternal::check_liquid_state;
     }
 
 private:
@@ -324,6 +328,7 @@ private:
     static Action* moonfire_on_attacker(PlayerbotAI* ai) { return new CastMoonfireOnAttackerAction(ai); }
     static Action* enrage(PlayerbotAI* ai) { return new CastEnrageAction(ai); }
     static Action* force_of_nature(PlayerbotAI* ai) { return new CastForceOfNatureAction(ai); }
+    static Action* check_liquid_state(PlayerbotAI* ai) { return new CheckLiquidStateAction(ai); }
 };
 
 SharedNamedObjectContextList<Strategy> DruidAiObjectContext::sharedStrategyContexts;

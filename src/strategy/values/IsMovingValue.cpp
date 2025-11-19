@@ -25,6 +25,17 @@ bool IsSwimmingValue::Calculate()
         return false;
 
     int8 targetInLiquidState = target->GetLiquidData().Status;
+    bool result = targetInLiquidState == LIQUID_MAP_UNDER_WATER || (targetInLiquidState == LIQUID_MAP_IN_WATER && target->CanSwim());
 
-    return targetInLiquidState == LIQUID_MAP_UNDER_WATER || (targetInLiquidState == LIQUID_MAP_IN_WATER && target->CanSwim());
+    // DEBUG
+    if (botAI->HasStrategy("debug", BotState::BOT_STATE_NON_COMBAT))
+    {
+        std::ostringstream out;
+        out << "IsSwimming: liquidState=" << (int)targetInLiquidState
+            << " canSwim=" << target->CanSwim()
+            << " result=" << result;
+        botAI->TellMaster(out.str());
+    }
+
+    return result;
 }

@@ -102,6 +102,15 @@ GenericDruidStrategy::GenericDruidStrategy(PlayerbotAI* botAI) : CombatStrategy(
     actionNodeFactories.Add(new GenericDruidStrategyActionNodeFactory());
 }
 
+NextAction** GenericDruidStrategy::getDefaultActions()
+{
+    // Drowning prevention has higher priority than shifting out
+    return NextAction::array(0,
+        new NextAction("aquatic form", 1.0f),      // Check drowning first
+        new NextAction("caster form", 0.1f),       // Then shift out if safe
+        nullptr);
+}
+
 void GenericDruidStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 {
     CombatStrategy::InitTriggers(triggers);

@@ -5,6 +5,7 @@
 
 #include "DruidShapeshiftActions.h"
 
+#include "MovementActions.h"
 #include "Playerbots.h"
 
 bool CastBearFormAction::isPossible()
@@ -34,9 +35,35 @@ bool CastTravelFormAction::isUseful()
 
 bool CastCasterFormAction::isUseful()
 {
-    return botAI->HasAnyAuraOf(GetTarget(), "dire bear form", "bear form", "cat form", "travel form", "aquatic form",
-                               "flight form", "swift flight form", "moonkin form", nullptr) &&
-           AI_VALUE2(uint8, "mana", "self target") > sPlayerbotAIConfig->mediumHealth;
+    // Check if in a shapeshift form
+    bool inShapeshift = botAI->HasAnyAuraOf(GetTarget(), "dire bear form", "bear form", "cat form", "travel form", "aquatic form",
+                               "flight form", "swift flight form", "moonkin form", nullptr);
+
+    if (!inShapeshift)
+        return false;
+
+    // If in aquatic form, check if we should stay in it for drowning prevention
+    if (botAI->HasAura("aquatic form", bot))
+    {
+        int8 liquidState = bot->GetLiquidData().Status;
+
+        // If underwater, check breath timer
+        if (liquidState == LIQUID_MAP_UNDER_WATER)
+        {
+            uint32 breathTimer = bot->GetUInt32Value(PLAYER_BYTES_3) & 0xFF;
+            // Keep aquatic form if breath is low (drowning prevention priority)
+            if (breathTimer <= DROWNING_BREATH_THRESHOLD_SECONDS)
+                return false;
+        }
+
+        // If breath is safe and in combat, shift out to attack
+        Unit* target = AI_VALUE(Unit*, "current target");
+        if (target)
+            return true;
+    }
+
+    // For other forms, only shift if mana is decent
+    return AI_VALUE2(uint8, "mana", "self target") > sPlayerbotAIConfig->mediumHealth;
 }
 
 bool CastCasterFormAction::Execute(Event event)
@@ -54,6 +81,47 @@ bool CastCancelTreeFormAction::Execute(Event event)
 {
     botAI->RemoveAura("tree of life");
     return true;
+}
+
+bool CastAquaticFormAction::isPossible()
+{
+    return CastBuffSpellAction::isPossible();
+}
+
+bool CastAquaticFormAction::isUseful()
+{
+    // Don't use if already in aquatic form
+    if (botAI->HasAura("aquatic form", bot))
+    {
+        return false;
+    }
+
+    // Check if in water
+    int8 liquidState = bot->GetLiquidData().Status;
+    if (liquidState != LIQUID_MAP_IN_WATER && liquidState != LIQUID_MAP_UNDER_WATER)
+    {
+        return false;
+    }
+
+    // If underwater and drowning, use aquatic form immediately (even in combat)
+    if (liquidState == LIQUID_MAP_UNDER_WATER)
+    {
+        uint32 breathTimer = bot->GetUInt32Value(PLAYER_BYTES_3) & 0xFF;
+        if (breathTimer <= DROWNING_BREATH_THRESHOLD_SECONDS)
+        {
+            return true;
+        }
+    }
+
+    // Otherwise, only use aquatic form when not in combat
+    Unit* target = AI_VALUE(Unit*, "current target");
+    return !target;
+}
+
+NextAction** CastAquaticFormAction::getAlternatives()
+{
+    // If no mana for aquatic form but drowning, swim to surface instead
+    return NextAction::array(0, new NextAction("swim to surface"), nullptr);
 }
 
 bool CastTreeFormAction::isUseful()

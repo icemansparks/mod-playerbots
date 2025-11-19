@@ -4,6 +4,7 @@
  */
 
 #include "DruidTriggers.h"
+#include "MovementActions.h"
 #include "Player.h"
 #include "Playerbots.h"
 
@@ -60,4 +61,28 @@ bool HurricaneChannelCheckTrigger::IsActive()
 
     // Not channeling Hurricane
     return false;
+}
+
+bool AquaticFormToCasterTrigger::IsActive()
+{
+    // This trigger determines when to leave aquatic form for combat
+    // Only trigger if bot is in aquatic form and in combat
+    if (!botAI->HasAura("aquatic form", bot) || !bot->IsInCombat())
+    {
+        return false;
+    }
+
+    // Don't leave aquatic form if drowning - survival is priority
+    int8 liquidState = bot->GetLiquidData().Status;
+    if (liquidState == LIQUID_MAP_UNDER_WATER)
+    {
+        uint32 breathTimer = bot->GetUInt32Value(PLAYER_BYTES_3) & 0xFF;
+        if (breathTimer <= DROWNING_BREATH_THRESHOLD_SECONDS)
+        {
+            return false;
+        }
+    }
+
+    // Safe to leave aquatic form - combat effectiveness is better in caster form
+    return true;
 }

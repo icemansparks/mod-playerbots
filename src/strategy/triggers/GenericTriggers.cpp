@@ -8,6 +8,7 @@
 #include <string>
 
 #include "BattlegroundWS.h"
+#include "MovementActions.h"
 #include "CreatureAI.h"
 #include "GameTime.h"
 #include "ItemVisitors.h"
@@ -583,7 +584,25 @@ bool NotDpsAoeTargetActiveTrigger::IsActive()
     return dps && target != dps;
 }
 
-bool IsSwimmingTrigger::IsActive() { return AI_VALUE2(bool, "swimming", "self target"); }
+bool IsSwimmingTrigger::IsActive()
+{
+    return AI_VALUE2(bool, "swimming", "self target");
+}
+
+bool IsDrowningTrigger::IsActive()
+{
+    int8 liquidState = bot->GetLiquidData().Status;
+
+    // Only trigger when underwater
+    if (liquidState != LIQUID_MAP_UNDER_WATER)
+        return false;
+
+    // Check breath timer (counts down from 180)
+    uint32 breathTimer = bot->GetUInt32Value(PLAYER_BYTES_3) & 0xFF;
+
+    // Trigger when breath is low (see DROWNING_BREATH_THRESHOLD_SECONDS)
+    return breathTimer <= DROWNING_BREATH_THRESHOLD_SECONDS;
+}
 
 bool HasNearestAddsTrigger::IsActive()
 {

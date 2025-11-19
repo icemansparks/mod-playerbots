@@ -280,4 +280,12 @@ protected:
     static const std::set<uint32> HURRICANE_SPELL_IDS;
 };
 
+class AquaticFormToCasterTrigger : public Trigger
+{
+public:
+    AquaticFormToCasterTrigger(PlayerbotAI* botAI) : Trigger(botAI, "aquatic form to caster") {}
+
+    bool IsActive() override;
+};
+
 #endif
