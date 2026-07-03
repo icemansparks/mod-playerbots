@@ -124,6 +124,34 @@ bool CheckMountStateAction::Execute(Event /*event*/)
         if (!botAI->HasStrategy("follow", BOT_STATE_NON_COMBAT))
             return false;
 
+        // Assist-aware mount handling: when the bot has an assist target (a mob fighting the
+        // master resolves as "dps target" long before the bot itself is in combat), decide
+        // against the target instead of the master. Without this the bot rides past the fight
+        // to the master's position and oscillates between assisting and re-mounting.
+        Unit* assistTarget = AI_VALUE(Unit*, "dps target");
+        if (!assistTarget)
+            assistTarget = AI_VALUE(Unit*, "enemy player target");
+
+        if (assistTarget)
+        {
+            float reach = bot->GetCombatReach() + assistTarget->GetCombatReach();
+            float distToTarget = bot->GetExactDist(assistTarget);
+
+            // Close enough to engage: dismount so the assist strategies can take over
+            if (distToTarget <= CalculateDismountDistance() + reach)
+            {
+                if (bot->IsMounted())
+                {
+                    Dismount();
+                    return true;
+                }
+
+                // Unmounted next to the assist target: leave mount state alone so the
+                // dps/tank assist trigger can act instead of re-mounting for the master
+                return false;
+            }
+        }
+
         if (ShouldFollowMasterMountState(master, noAttackers, shouldMount))
             return Mount();
 
@@ -484,15 +512,9 @@ bool CheckMountStateAction::StayMountedToCloseDistance() const
 
     float distToMaster = ServerFacade::instance().GetDistance2d(bot, master);
 
-    // If master is in combat, dismount at assist range. CalculateDismountDistance() alone is
-    // ~3yd for non-warrior melee, which reads as riding into the master's face and then
-    // hovering around the follow distance without ever engaging - clamp to a proper approach
-    // range so the bot dismounts clearly before the fight and closes the rest on foot.
+    // If master is in combat, stay mounted until combat reach, then dismount to assist
     if (master->IsInCombat())
-    {
-        float assistRange = std::max(18.0f, CalculateDismountDistance());
-        return distToMaster > assistRange;
-    }
+        return distToMaster > CalculateDismountDistance();
 
     // If master is not in combat, stay mounted until near the master, then mirror their state
     float masterProximityRange = 5.0f;
