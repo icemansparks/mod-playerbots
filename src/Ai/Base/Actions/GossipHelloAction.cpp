@@ -59,7 +59,11 @@ void GossipHelloAction::TellGossipMenus()
     if (!bot->PlayerTalkClass)
         return;
 
-    Creature* pCreature = bot->GetNPCIfCanInteractWith(GetMaster()->GetTarget(), UNIT_NPC_FLAG_NONE);
+    Player* master = GetMaster();
+    if (!master)
+        return;
+
+    Creature* pCreature = bot->GetNPCIfCanInteractWith(master->GetTarget(), UNIT_NPC_FLAG_NONE);
     GossipMenu& menu = bot->PlayerTalkClass->GetGossipMenu();
     if (pCreature)
     {
@@ -87,9 +91,13 @@ bool GossipHelloAction::ProcessGossip(int32 menuToSelect, bool silent)
         return false;
     }
 
+    Player* master = GetMaster();
+    if (!master)
+        return false;
+
     WorldPacket p;
     std::string code;
-    p << GetMaster()->GetTarget();
+    p << master->GetTarget();
     p << menu.GetMenuId() << menuToSelect;
     p << code;
     bot->GetSession()->HandleGossipSelectOptionOpcode(p);
