@@ -18,6 +18,10 @@
 
 static constexpr uint32 SPELL_COLD_WEATHER_FLYING = 54197;
 static constexpr float PARACHUTE_LAND_THRESHOLD = 15.0f;
+// Range around the master inside which a following bot mirrors the master's mount state.
+// Between this and CalculateMountDistance() (21+ yd) the bot just walks - mounting there
+// costs more time (cast) than it saves.
+static constexpr float MASTER_PROXIMITY_RANGE = 5.0f;
 
 // Define the static map / init bool for caching bot preferred mount data globally
 std::unordered_map<uint32, PreferredMountCache> CheckMountStateAction::mountCache;
@@ -152,7 +156,13 @@ bool CheckMountStateAction::Execute(Event /*event*/)
             }
         }
 
-        if (ShouldFollowMasterMountState(master, noAttackers, shouldMount))
+        float distToMaster = ServerFacade::instance().GetDistance2d(bot, master);
+
+        // Mirror the master's mount state only when near: farther out the bot either walks
+        // (5-21 yd, mounting wouldn't pay for its cast time) or mounts to close a real gap
+        // (ShouldMountToCloseDistance, 21+ yd)
+        if (distToMaster <= MASTER_PROXIMITY_RANGE &&
+            ShouldFollowMasterMountState(master, noAttackers, shouldMount))
             return Mount();
 
         else if (ShouldDismountForMaster(master) && bot->IsMounted())
@@ -517,8 +527,7 @@ bool CheckMountStateAction::StayMountedToCloseDistance() const
         return distToMaster > CalculateDismountDistance();
 
     // If master is not in combat, stay mounted until near the master, then mirror their state
-    float masterProximityRange = 5.0f;
-    return distToMaster > masterProximityRange;
+    return distToMaster > MASTER_PROXIMITY_RANGE;
 }
 
 bool CheckMountStateAction::ShouldMountToCloseDistance() const
