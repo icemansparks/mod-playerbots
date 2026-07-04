@@ -362,3 +362,33 @@ bool FleeToGroupLeaderAction::isUseful()
 
     return true;
 }
+
+bool FollowMasterCombatAction::Execute(Event /*event*/)
+{
+    Player* master = botAI->GetMaster();
+    if (!master || master == bot)
+        return false;
+
+    return Follow(master);
+}
+
+bool FollowMasterCombatAction::isUseful()
+{
+    Player* master = botAI->GetMaster();
+    if (!master || master == bot)
+        return false;
+
+    if (!botAI->HasStrategy("follow", BOT_STATE_NON_COMBAT))
+        return false;
+
+    // Stand down when the master is fighting the bot's own current target: it's a shared fight, so
+    // assist it instead of running back to the master.
+    Unit* target = AI_VALUE(Unit*, "current target");
+    if (target && master->GetTarget() == target->GetGUID())
+        return false;
+
+    if (!CanDeadFollow(master))
+        return false;
+
+    return true;
+}
