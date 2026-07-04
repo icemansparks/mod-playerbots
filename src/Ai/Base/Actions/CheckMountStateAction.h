@@ -63,8 +63,8 @@ private:
     bool TryPreferredMount(Player* master) const;
     uint32 GetMountType(Player* master) const;
     bool TryRandomMountFiltered(const std::map<int32, std::vector<uint32>>& spells, int32 masterSpeed) const;
-    bool StayMountedToCloseDistance() const;
-    bool ShouldMountToCloseDistance() const;
+    bool StayMountedToCloseDistance(float distToMaster) const;
+    bool ShouldMountToCloseDistance(float distToMaster) const;
 };
 
 #endif
