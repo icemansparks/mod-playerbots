@@ -123,11 +123,13 @@ bool CheckMountStateAction::Execute(Event /*event*/)
     float const distToMasterTop = noRealMaster ? 0.0f : ServerFacade::instance().GetDistance2d(bot, master);
 
     // By default the bot dismounts and fights whatever it aggroed. Only HOLD the mount (skip this
-    // own-target dismount) when the admin enabled AiPlayerbot.CombatPrioritizeMaster AND the bot is
-    // still far from its master: then it stays mounted and the combat "follow master" trigger rides
-    // it back, engaging only once near the master. Master-less / BG bots always dismount as before.
+    // own-target dismount) when the admin enabled AiPlayerbot.CombatPrioritizeMaster and the bot
+    // should still be following the master rather than engaging: either it is still far from the
+    // master (riding back), OR the master is itself still mounted - keep mirroring/following it and
+    // let the mob chase; only dismount to fight once the master dismounts (and the bot is near).
+    // Master-less / BG bots always dismount as before.
     bool const holdForMaster = !noRealMaster && !inBattleground && sPlayerbotAIConfig.combatPrioritizeMaster &&
-                               distToMasterTop > sPlayerbotAIConfig.tooCloseDistance;
+                               (distToMasterTop > sPlayerbotAIConfig.tooCloseDistance || master->IsMounted());
 
     if (shouldDismount && bot->IsMounted() && !holdForMaster)
     {
