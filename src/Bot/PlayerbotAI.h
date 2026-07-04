@@ -16,6 +16,7 @@
 #include "Item.h"
 #include "NewRpgInfo.h"
 #include "NewRpgStrategy.h"
+#include "ObjectGuid.h"
 #include "PlayerbotAIBase.h"
 #include "PlayerbotAIConfig.h"
 #include "PlayerbotSecurity.h"
@@ -568,7 +569,7 @@ public:
     BotCheatMask GetCheat() { return cheatMask; }
     void SetCheat(BotCheatMask mask) { cheatMask = mask; }
 
-    void SetMaster(Player* newMaster) { master = newMaster; }
+    void SetMaster(Player* newMaster);
     AiObjectContext* GetAiObjectContext() { return aiObjectContext; }
     ChatHelper* GetChatHelper() { return &chatHelper; }
     bool IsOpposing(Player* player);
@@ -628,6 +629,9 @@ private:
 protected:
     Player* bot;
     Player* master;
+    // GUID of master, captured in SetMaster, so a stale master pointer can be detected via
+    // ObjectAccessor without dereferencing the (possibly freed) raw pointer
+    ObjectGuid masterGuid;
     uint32 accountId;
     AiObjectContext* aiObjectContext;
     Engine* currentEngine;

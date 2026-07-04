@@ -413,6 +413,13 @@ void PlayerbotAI::UpdateAIGroupMaster()
     if (!botAI)
         return;
 
+    // Drop a stale master pointer before anything below dereferences it. The master Player can
+    // be freed (logout) between AI ticks on the map-update threads; GET_PLAYERBOT_AI(master)
+    // further down would then crash on freed memory. Validate by GUID through ObjectAccessor,
+    // which never touches the raw pointer. The block below re-resolves a new master from the group.
+    if (master && master != bot && !ObjectAccessor::FindConnectedPlayer(masterGuid))
+        SetMaster(nullptr);
+
     Group* group = bot->GetGroup();
 
     bool IsRandomBot = sRandomPlayerbotMgr.IsRandomBot(bot);
@@ -4453,6 +4460,12 @@ Player* PlayerbotAI::FindNewMaster()
         }
     }
     return nullptr;
+}
+
+void PlayerbotAI::SetMaster(Player* newMaster)
+{
+    master = newMaster;
+    masterGuid = newMaster ? newMaster->GetGUID() : ObjectGuid::Empty;
 }
 
 bool PlayerbotAI::HasRealPlayerMaster()
