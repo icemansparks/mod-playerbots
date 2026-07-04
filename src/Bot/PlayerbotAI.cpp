@@ -4494,16 +4494,18 @@ Player* PlayerbotAI::GetMaster()
     if (!master)
         return nullptr;
 
+    // A real player is its own master; that pointer is never validated here (out of scope).
+    if (master == bot)
+        return master;
+
     // Never hand out a stale pointer: the master Player can be destroyed (logout) between
-    // AI ticks on the map-update threads while bots still hold the raw pointer. Re-validate
-    // through the ObjectAccessor by GUID, which never dereferences the stored pointer.
+    // AI ticks on the map-update threads while bots still hold the raw pointer. Re-resolve
+    // through the ObjectAccessor by GUID and return THAT object, never the cached raw pointer
+    // - a fast same-GUID relog yields a fresh Player, a logged-out master yields nullptr.
     // FindConnectedPlayer (not FindPlayer): the master must still count as present while
     // merely loading/teleporting between maps, otherwise every zone transition makes bots
     // transiently masterless (rejected whisper commands, spurious master resets).
-    if (master != bot && (!masterGuid || !ObjectAccessor::FindConnectedPlayer(masterGuid)))
-        return nullptr;
-
-    return master;
+    return masterGuid ? ObjectAccessor::FindConnectedPlayer(masterGuid) : nullptr;
 }
 
 void PlayerbotAI::SetMaster(Player* newMaster)
