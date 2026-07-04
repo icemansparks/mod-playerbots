@@ -125,11 +125,14 @@ bool CheckMountStateAction::Execute(Event /*event*/)
     // By default the bot dismounts and fights whatever it aggroed. Only HOLD the mount (skip this
     // own-target dismount) when the admin enabled AiPlayerbot.CombatPrioritizeMaster and the bot
     // should still be following the master rather than engaging: either it is still far from the
-    // master (riding back), OR the master is itself still mounted - keep mirroring/following it and
-    // let the mob chase; only dismount to fight once the master dismounts (and the bot is near).
+    // master (riding back), OR the master is actively travelling mounted - keep following and let
+    // the mob chase, only dismounting to fight once the master dismounts (and the bot is near).
+    // The master must be MOVING for the mounted-hold: a master sitting still on its mount is not
+    // travelling, so the bot dismounts and deals with its attacker instead of taking hits idle.
     // Master-less / BG bots always dismount as before.
     bool const holdForMaster = !noRealMaster && !inBattleground && sPlayerbotAIConfig.combatPrioritizeMaster &&
-                               (distToMasterTop > sPlayerbotAIConfig.tooCloseDistance || master->IsMounted());
+                               (distToMasterTop > sPlayerbotAIConfig.tooCloseDistance ||
+                                (master->IsMounted() && master->isMoving()));
 
     if (shouldDismount && bot->IsMounted() && !holdForMaster)
     {
