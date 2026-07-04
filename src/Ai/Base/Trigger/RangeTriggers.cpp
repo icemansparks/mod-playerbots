@@ -210,6 +210,20 @@ bool FarFromMasterTrigger::IsActive()
     return ServerFacade::instance().IsDistanceGreaterThan(AI_VALUE2(float, "distance", "group leader"), distance);
 }
 
+bool CombatFollowMasterTrigger::IsActive()
+{
+    if (!sPlayerbotAIConfig.combatPrioritizeMaster)
+        return false;
+
+    Player* bot = botAI->GetBot();
+    Player* master = botAI->GetMaster();
+    if (!bot || !master || master == bot)
+        return false;
+
+    return ServerFacade::instance().IsDistanceGreaterThan(
+        ServerFacade::instance().GetDistance2d(bot, master), sPlayerbotAIConfig.tooCloseDistance);
+}
+
 bool TooCloseToCreatureTrigger::TooCloseToCreature(uint32 creatureId, float range, bool alive)
 {
     Creature* nearestCreature = bot->FindNearestCreature(creatureId, range, alive);

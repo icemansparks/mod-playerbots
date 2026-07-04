@@ -29,4 +29,17 @@ public:
     bool isUseful() override;
 };
 
+// Runs the bot back to its OWN master (GetMaster(), not the party/group leader - so it works when
+// several party members each brought bots). Used by the combat "follow master" trigger when the
+// admin enabled AiPlayerbot.CombatPrioritizeMaster. Stands down when the master is fighting the
+// bot's current target, so shared fights still assist instead of running away.
+class FollowMasterCombatAction : public FollowAction
+{
+public:
+    FollowMasterCombatAction(PlayerbotAI* botAI) : FollowAction(botAI, "follow master combat") {}
+
+    bool Execute(Event event) override;
+    bool isUseful() override;
+};
+
 #endif

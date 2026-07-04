@@ -9,6 +9,20 @@
 
 void CombatStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 {
+    // Opt-in (AiPlayerbot.CombatPrioritizeMaster): while in combat and beyond TooCloseDistance from
+    // the master, run back to the master instead of chasing/holding on a mob the bot aggroed itself.
+    // Relevance ACTION_HIGH+3 (23) outranks "reach melee" (21) / "reach spell" (20) so the return
+    // wins each tick while far. "follow master combat" follows the bot's OWN master (not the party
+    // leader) and stands down when the master is on the bot's target, so shared fights still assist.
+    // The "combat follow master" trigger is inert unless the config is enabled.
+    triggers.push_back(
+        new TriggerNode(
+            "combat follow master",
+            {
+                NextAction("follow master combat", ACTION_HIGH + 3)
+            }
+        )
+    );
     triggers.push_back(
         new TriggerNode(
             "enemy out of spell",

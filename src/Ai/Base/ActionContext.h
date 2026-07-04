@@ -132,6 +132,7 @@ public:
         creators["follow"] = &ActionContext::follow;
         creators["move from group"] = &ActionContext::move_from_group;
         creators["flee to group leader"] = &ActionContext::flee_to_group_leader;
+        creators["follow master combat"] = &ActionContext::follow_master_combat;
         creators["runaway"] = &ActionContext::runaway;
         creators["stay"] = &ActionContext::stay;
         creators["sit"] = &ActionContext::sit;
@@ -349,6 +350,7 @@ private:
     static Action* follow(PlayerbotAI* botAI) { return new FollowAction(botAI); }
     static Action* move_from_group(PlayerbotAI* botAI) { return new MoveFromGroupAction(botAI); }
     static Action* flee_to_group_leader(PlayerbotAI* botAI) { return new FleeToGroupLeaderAction(botAI); }
+    static Action* follow_master_combat(PlayerbotAI* botAI) { return new FollowMasterCombatAction(botAI); }
     static Action* add_gathering_loot(PlayerbotAI* botAI) { return new AddGatheringLootAction(botAI); }
     static Action* add_loot(PlayerbotAI* botAI) { return new AddLootAction(botAI); }
     static Action* add_all_loot(PlayerbotAI* botAI) { return new AddAllLootAction(botAI); }

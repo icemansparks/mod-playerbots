@@ -169,6 +169,11 @@ public:
     bool enableGreet;
     bool randomBotSayWithoutMaster;
 
+    // When true, a grouped bot in combat prioritises closing the distance to its master over
+    // fighting a mob it aggroed itself (it rides/runs back and only engages once near the master).
+    // When false (default) the bot fights whatever it aggroed, wherever the master is.
+    bool combatPrioritizeMaster;
+
     uint32 broadcastChanceMaxValue;
 
     uint32 broadcastToGuildGlobalChance;

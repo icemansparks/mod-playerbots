@@ -400,6 +400,14 @@ AiPlayerbot.FleeDistance = 5.0
 AiPlayerbot.AggroDistance = 22
 AiPlayerbot.TooCloseDistance = 5.0
 AiPlayerbot.MeleeDistance = 0.75
+
+# When enabled, a grouped bot in combat prioritises closing the distance to its OWN master (not the
+# party leader) over fighting a mob it aggroed itself: while further than TooCloseDistance from the
+# master it runs/rides back and only engages once near the master. It still assists the master's
+# current target normally. When disabled (default) the bot fights whatever it aggroed, wherever the
+# master is.
+# Default: 0 (off)
+AiPlayerbot.CombatPrioritizeMaster = 0
 AiPlayerbot.FollowDistance = 1.5
 AiPlayerbot.WhisperDistance = 6000.0
 AiPlayerbot.ContactDistance = 0.45

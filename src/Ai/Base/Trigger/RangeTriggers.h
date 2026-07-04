@@ -121,6 +121,18 @@ public:
     OutOfReactRangeTrigger(PlayerbotAI* botAI) : FarFromMasterTrigger(botAI, "out of react range", 50.0f, 5) {}
 };
 
+// Active only when AiPlayerbot.CombatPrioritizeMaster is on and the bot is beyond TooCloseDistance
+// from its master. Wired in the combat engine to a follow-master action so a grouped bot rides/runs
+// back to the master instead of holding on a mob it aggroed itself. Measures distance to the MASTER
+// directly (not the "group leader" value, which is empty for a bot that follows without a party).
+class CombatFollowMasterTrigger : public Trigger
+{
+public:
+    CombatFollowMasterTrigger(PlayerbotAI* botAI) : Trigger(botAI, "combat follow master", 5) {}
+
+    bool IsActive() override;
+};
+
 class TooCloseToCreatureTrigger : public Trigger
 {
 public:
