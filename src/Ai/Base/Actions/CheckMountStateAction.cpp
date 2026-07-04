@@ -89,16 +89,27 @@ bool CheckMountStateAction::Execute(Event /*event*/)
     {
         float dismountDistance = CalculateDismountDistance();
         float mountDistance = CalculateMountDistance();
-        float combatReach = bot->GetCombatReach() + currentTarget->GetCombatReach();
         float distanceToTarget = bot->GetExactDist(currentTarget);
 
-        shouldDismount = (distanceToTarget <= dismountDistance + combatReach);
-        shouldMount = (distanceToTarget > mountDistance + combatReach);
+        // No + combatReach: the engage buffer is already baked into CalculateDismountDistance /
+        // CalculateMountDistance, so adding the reach on top double-counts and dismounts too early.
+        shouldDismount = (distanceToTarget <= dismountDistance);
+        shouldMount = (distanceToTarget > mountDistance);
     }
     else
     {
         shouldMount = true;
     }
+
+    if (master && master != bot)
+        LOG_ERROR("server",
+                  "[MountDbg] {} mounted={} cls={} isMelee={} dismountD={:.1f} mountD={:.1f} curTgt={} tgtDist={:.1f} "
+                  "distToMaster={:.1f} shouldDismount={} noAttackers={} botCombat={} state={} masterCombat={} masterMounted={}",
+                  bot->GetName(), bot->IsMounted(), (uint32)bot->getClass(), PlayerbotAI::IsMelee(bot),
+                  CalculateDismountDistance(), CalculateMountDistance(), currentTarget ? currentTarget->GetName() : "none",
+                  currentTarget ? bot->GetExactDist(currentTarget) : -1.0f,
+                  ServerFacade::instance().GetDistance2d(bot, master), shouldDismount, noAttackers, bot->IsInCombat(),
+                  (uint32)botAI->GetState(), master->IsInCombat(), master->IsMounted());
 
     // If should dismount, or master (if any) is no longer in travel form, yet bot still is, remove the shapeshifts
     if (shouldDismount ||
@@ -107,14 +118,25 @@ bool CheckMountStateAction::Execute(Event /*event*/)
         (masterInShapeshiftForm != FORM_FLIGHT_EPIC && botInShapeshiftForm == FORM_FLIGHT_EPIC && master && !master->IsMounted()))
         botAI->RemoveShapeshift();
 
-    if (shouldDismount && bot->IsMounted())
+    bool inBattleground = bot->InBattleground();
+    bool const noRealMaster = (!master || master == bot);
+    float const distToMasterTop = noRealMaster ? 0.0f : ServerFacade::instance().GetDistance2d(bot, master);
+
+    // By default the bot dismounts and fights whatever it aggroed. Only HOLD the mount (skip this
+    // own-target dismount) when the admin enabled AiPlayerbot.CombatPrioritizeMaster AND the bot is
+    // still far from its master: then it stays mounted and the combat "follow master" trigger rides
+    // it back, engaging only once near the master. Master-less / BG bots always dismount as before.
+    bool const holdForMaster = !noRealMaster && !inBattleground && sPlayerbotAIConfig.combatPrioritizeMaster &&
+                               distToMasterTop > sPlayerbotAIConfig.tooCloseDistance;
+
+    if (shouldDismount && bot->IsMounted() && !holdForMaster)
     {
+        if (master && master != bot)
+            LOG_ERROR("server", "[MountDbg] {} DISMOUNT path=topLevel-shouldDismount holdForMaster={}", bot->GetName(),
+                      holdForMaster);
         Dismount();
         return true;
     }
-
-    bool inBattleground = bot->InBattleground();
-    bool const noRealMaster = (!master || master == bot);
 
     // If there is a master and bot not in BG, follow master's mount state regardless of group leader
     if (!noRealMaster && !inBattleground)
@@ -124,24 +146,39 @@ bool CheckMountStateAction::Execute(Event /*event*/)
         if (!botAI->HasStrategy("follow", BOT_STATE_NON_COMBAT))
             return false;
 
-        // Assist-aware mount handling: when the bot has an assist target (a mob fighting the
-        // master resolves as "dps target" long before the bot itself is in combat), decide
-        // against the target instead of the master. Without this the bot rides past the fight
-        // to the master's position and oscillates between assisting and re-mounting.
+        float distToMaster = ServerFacade::instance().GetDistance2d(bot, master);
+
+        // Arrival/engage range to the master: when the master is fighting, dismount at the bot's own
+        // class engage distance (caster spell range / warrior charge range / melee contact), floored
+        // at TooCloseDistance so melee doesn't hover; otherwise just TooCloseDistance. Also the gate
+        // for "has the bot ridden in close to the master yet".
+        float const arrivalRange = master->IsInCombat()
+            ? std::max(CalculateDismountDistance(), sPlayerbotAIConfig.tooCloseDistance)
+            : sPlayerbotAIConfig.tooCloseDistance;
+
+        // Dismount to engage the assist target when the bot has either ridden in close to the master
+        // (arrivalRange) OR the master is fighting that very target (a shared fight - assist it even
+        // if the master is hanging back at range). For the bot's OWN, separate aggro while still far
+        // from the master, neither holds, so the bot keeps riding in / gets leashed back instead of
+        // peeling off. Include the target's combat reach so a melee bot dismounts at actual contact
+        // (its dismount distance alone is tighter than a sized mob's melee range).
         Unit* assistTarget = AI_VALUE(Unit*, "dps target");
         if (!assistTarget)
             assistTarget = AI_VALUE(Unit*, "enemy player target");
 
         if (assistTarget)
         {
-            float reach = bot->GetCombatReach() + assistTarget->GetCombatReach();
+            bool const masterOnThisTarget = master->GetTarget() == assistTarget->GetGUID();
+            float const reach = bot->GetCombatReach() + assistTarget->GetCombatReach();
             float distToTarget = bot->GetExactDist(assistTarget);
 
-            // Close enough to engage: dismount so the assist strategies can take over
-            if (distToTarget <= CalculateDismountDistance() + reach)
+            if ((distToMaster <= arrivalRange || masterOnThisTarget) &&
+                distToTarget <= CalculateDismountDistance() + reach)
             {
                 if (bot->IsMounted())
                 {
+                    LOG_ERROR("server", "[MountDbg] {} DISMOUNT path=assistBlock tgtDist={:.1f} distToMaster={:.1f} sharedTgt={}",
+                              bot->GetName(), distToTarget, distToMaster, masterOnThisTarget);
                     Dismount();
                     return true;
                 }
@@ -152,8 +189,6 @@ bool CheckMountStateAction::Execute(Event /*event*/)
             }
         }
 
-        float distToMaster = ServerFacade::instance().GetDistance2d(bot, master);
-
         // Mirror the master's mount state only when near (TooCloseDistance, default 5 yd):
         // farther out the bot either walks (mounting wouldn't pay for its cast time) or
         // mounts to close a real gap (ShouldMountToCloseDistance, 21+ yd)
@@ -163,22 +198,35 @@ bool CheckMountStateAction::Execute(Event /*event*/)
 
         else if (ShouldDismountForMaster(master) && bot->IsMounted())
         {
-            // If master dismounted, stay mounted until close enough to assist - but only while
-            // the bot itself is safe. A bot in combat (or with attackers) always falls through
-            // to the normal dismount, so it can never get stuck mounted while being attacked.
-            if (noAttackers && !bot->IsInCombat() && botAI->GetState() != BOT_STATE_COMBAT &&
-                StayMountedToCloseDistance(distToMaster))
+            // Master dismounted while the bot is still mounted: ride in and dismount once within
+            // TooCloseDistance. This is DISTANCE-BASED ONLY, deliberately ignoring every combat
+            // signal. None of them are usable here: noAttackers and botAI->GetState() reflect the
+            // master's/group combat (they read "unsafe" for the whole ride while the master fights),
+            // and bot->IsInCombat() flips transiently when a stray mob clips the bot mid-ride, which
+            // used to knock it off its mount 60+ yd out and make it foot-slog the rest. Long distance
+            // -> stay mounted; short distance -> dismount. The game still auto-dismounts on daze.
+            if (StayMountedToCloseDistance(distToMaster))
+            {
+                LOG_ERROR("server", "[MountDbg] {} STAY-MOUNTED path=dismountForMaster distToMaster={:.1f} botCombat={}",
+                          bot->GetName(), distToMaster, bot->IsInCombat());
                 return false;
+            }
 
+            LOG_ERROR("server", "[MountDbg] {} DISMOUNT path=dismountForMaster distToMaster={:.1f} botCombat={}",
+                      bot->GetName(), distToMaster, bot->IsInCombat());
             Dismount();
             return true;
         }
 
-        // Mount up to close the distance to master if beneficial - allow mounting even if master
-        // is in combat, as long as the bot itself is not in combat and has no attackers
-        else if (!bot->IsMounted() && noAttackers && !bot->IsInCombat() &&
-                 botAI->GetState() != BOT_STATE_COMBAT && ShouldMountToCloseDistance(distToMaster))
+        // Mount up to close the distance to master if beneficial - allow mounting even while the
+        // master is in combat, as long as the bot itself is not physically in combat. Same reasoning
+        // as above: gate only on bot->IsInCombat(), not noAttackers / GetState() (master-driven).
+        else if (!bot->IsMounted() && !bot->IsInCombat() &&
+                 ShouldMountToCloseDistance(distToMaster))
+        {
+            LOG_ERROR("server", "[MountDbg] {} MOUNT path=mountToClose distToMaster={:.1f}", bot->GetName(), distToMaster);
             return Mount();
+        }
 
         return false;
     }
@@ -214,8 +262,11 @@ bool CheckMountStateAction::isUseful()
         masterInShapeshiftForm = master->GetShapeshiftForm();
     }
 
-    // Not useful when in combat and not currently mounted / travel formed
-    if ((bot->IsInCombat() || botAI->GetState() == BOT_STATE_COMBAT) &&
+    // Not useful when the bot is itself physically in combat and not currently mounted / travel formed.
+    // Gate on bot->IsInCombat() only, NOT botAI->GetState(): the AI state is BOT_STATE_COMBAT whenever
+    // the master is fighting, so also bailing on it would stop an unmounted bot from ever mounting up to
+    // close the distance and assist a master who is already in combat.
+    if (bot->IsInCombat() &&
         !bot->IsMounted() && botInShapeshiftForm != FORM_TRAVEL && botInShapeshiftForm != FORM_FLIGHT && botInShapeshiftForm != FORM_FLIGHT_EPIC)
         return false;
 
@@ -516,11 +567,16 @@ bool CheckMountStateAction::StayMountedToCloseDistance(float distToMaster) const
     if (!master)
         return false;
 
-    // If master is in combat, stay mounted until combat reach, then dismount to assist
+    // Master in combat and on foot: ride in and dismount at the bot's own engage range, so it can
+    // act the instant it lands - a caster peels off at spell range, a warrior at charge range, a
+    // melee at contact - mirroring how a real player dismounts as soon as they can cast/charge/hit.
+    // CalculateDismountDistance already encodes that per-class range (~2.75 melee, 18 warrior,
+    // ~30.5 caster). Floor it at TooCloseDistance so melee (whose range is tighter than the follow
+    // distance ~3 yd) doesn't hover mounted just outside the line waiting to dismount.
     if (master->IsInCombat())
-        return distToMaster > CalculateDismountDistance();
+        return distToMaster > std::max(CalculateDismountDistance(), sPlayerbotAIConfig.tooCloseDistance);
 
-    // If master is not in combat, stay mounted until near the master, then mirror their state
+    // Master out of combat: just get near (TooCloseDistance) before dismounting to mirror its state.
     return distToMaster > sPlayerbotAIConfig.tooCloseDistance;
 }
 
